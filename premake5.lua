@@ -15,13 +15,28 @@ project "CoyoteController"
 
     files
     {
+        -- CoyoteController
         "src/**.h",
-        "src/**.cpp"
+        "src/**.cpp",
+
+        -- ImGui
+        "external/ImGui/imgui.cpp",
+        "external/ImGui/imgui_draw.cpp",
+        "external/ImGui/imgui_tables.cpp",
+        "external/ImGui/imgui_widgets.cpp",
+
+        "external/ImGui/backends/imgui_impl_win32.cpp",
+        "external/ImGui/backends/imgui_impl_dx11.cpp"
     }
 
     includedirs
     {
-        "external/libVIIPER/include"
+        "src",
+
+        "external/libVIIPER/include",
+
+        "external/imgui",
+        "external/imgui/backends"
     }
 
     libdirs
@@ -31,7 +46,13 @@ project "CoyoteController"
 
     links
     {
-        "libVIIPER"
+        -- VIIPER
+        "libVIIPER",
+
+        -- ImGui
+        "d3d11",
+        "dxgi",
+        "d3dcompiler"
     }
 
     postbuildcommands
