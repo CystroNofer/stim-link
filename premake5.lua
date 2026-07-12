@@ -55,6 +55,7 @@ project "CoyoteController"
         systemversion "latest"
 
     filter "configurations:Debug"
+        defines { "CC_DEBUG" }
         runtime "Debug"
         symbols "On"
 

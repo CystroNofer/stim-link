@@ -10,9 +10,11 @@ void VIIPERBackend::LogCallback(
 
 	switch (level)
 	{
+#ifdef CC_DEBUG
 	case VIIPER_LOG_DEBUG:
 		levelName = "DEBUG";
 		break;
+#endif // CC_DEBUG
 	case VIIPER_LOG_INFO:
 		levelName = "INFO";
 		break;
@@ -22,6 +24,8 @@ void VIIPERBackend::LogCallback(
 	case VIIPER_LOG_ERROR:
 		levelName = "ERROR";
 		break;
+	default:
+		return;
 	}
 
 	std::cout
