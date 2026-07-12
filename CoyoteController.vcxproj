@@ -114,6 +114,10 @@ copy /B /Y "external\USBip\resources.dll" "bin\Release\x86_64\CoyoteController\e
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\VIIPERBackend.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\VIIPERBackend.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
