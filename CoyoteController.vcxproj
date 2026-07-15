@@ -114,19 +114,25 @@ copy /B /Y "external\USBip\resources.dll" "bin\Release\x86_64\CoyoteController\e
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\CoyoteBLEClient.h" />
+    <ClInclude Include="src\SignalBuffer.h" />
     <ClInclude Include="src\UI.h" />
     <ClInclude Include="src\VIIPERBackend.h" />
+    <ClInclude Include="src\Waveform.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\CoyoteBLEClient.cpp" />
     <ClCompile Include="external\ImGui\backends\imgui_impl_dx11.cpp" />
     <ClCompile Include="external\ImGui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="external\ImGui\imgui.cpp" />
     <ClCompile Include="external\ImGui\imgui_draw.cpp" />
     <ClCompile Include="external\ImGui\imgui_tables.cpp" />
     <ClCompile Include="external\ImGui\imgui_widgets.cpp" />
+    <ClCompile Include="src\SignalBuffer.cpp" />
     <ClCompile Include="src\UI.cpp" />
     <ClCompile Include="src\VIIPERBackend.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Waveform.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

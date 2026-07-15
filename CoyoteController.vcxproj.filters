@@ -21,6 +21,9 @@
     <ClInclude Include="src\VIIPERBackend.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="src\Waveform.h" />
+    <ClInclude Include="src\SignalBuffer.h" />
+    <ClInclude Include="src\CoyoteBLEClient.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="external\ImGui\backends\imgui_impl_dx11.cpp">
@@ -50,5 +53,8 @@
     <ClCompile Include="src\main.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Waveform.cpp" />
+    <ClCompile Include="src\SignalBuffer.cpp" />
+    <ClCompile Include="src\CoyoteBLEClient.cpp" />
   </ItemGroup>
 </Project>

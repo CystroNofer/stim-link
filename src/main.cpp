@@ -1,7 +1,13 @@
+// Waveform
+#include "SignalBuffer.h"
 // VIIPER
 #include "VIIPERBackend.h"
 // ImGui
 #include "UI.h"
+
+#include <cstddef>
+#include <mutex>
+#include <vector>
 
 int main()
 {
@@ -13,10 +19,16 @@ int main()
 	}
 	std::cout << "[MAIN][INFO] UI initialized\n";
 
+	// ==================== Signal Buffer ====================
+	SignalBuffer buffer(std::chrono::milliseconds(500));
+
 	// ==================== libVIIPER Init ====================
 	std::cout << "[MAIN][INFO] Starting libVIIPER...\n";
-	if (!VIIPERBackend::Init())
-	{
+	if (!VIIPERBackend::Init(
+		[&buffer](const std::uint8_t leftMotor, const std::uint8_t rightMotor) {
+			buffer.Push(leftMotor, rightMotor);
+		}
+	)) {
 		return 1;
 	}
 
@@ -26,11 +38,10 @@ int main()
 		<< "\nOpen joy.cpl to check for the controller\n"
 		<< "Launch a game with controller vibration enabled\n\n";
 
-
 	// ==================== Main Loop ====================
 	bool running = true;
 	while (running) {
-		if (!UI::Update()) {
+		if (!UI::Update(buffer.GetSnapshot(), std::chrono::milliseconds(2000))) {
 			UI::Shutdown();
 			running = false;
 		}

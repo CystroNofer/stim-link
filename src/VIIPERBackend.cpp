@@ -1,6 +1,7 @@
 #include "VIIPERBackend.h"
 
-USBServerHandle VIIPERBackend::server = 0;
+USBServerHandle VIIPERBackend::s_Server = 0;
+VIIPERBackend::RumbleCallback VIIPERBackend::s_RumbleCallback;
 
 void VIIPERBackend::LogCallback(
 	const VIIPERLogLevel level,
@@ -34,19 +35,9 @@ void VIIPERBackend::LogCallback(
 		<< '\n';
 }
 
-void VIIPERBackend::RumbleCallback(
-	const Xbox360DeviceHandle device,
-	const std::uint8_t leftMotor,
-	const std::uint8_t rightMotor
-) {
-	std::cout
-		<< "[RUMBLE]"
-		<< " left=" << static_cast<unsigned>(leftMotor)
-		<< " right=" << static_cast<unsigned>(rightMotor)
-		<< '\n';
-}
+bool VIIPERBackend::Init(RumbleCallback rumbleCallback) {
+	s_RumbleCallback = std::move(rumbleCallback);
 
-bool VIIPERBackend::Init() {
 	// ==================== Resolve PATH ====================
 	std::vector<wchar_t> buffer(32768);
 
@@ -58,7 +49,9 @@ bool VIIPERBackend::Init() {
 
 	if (length == 0 || length >= buffer.size())
 	{
-		throw std::runtime_error("GetModuleFileNameW failed.");
+		std::wcerr << L"[VIIPER][ERROR] GetModuleFileNameW failed.\n";
+
+		return false;
 	}
 
 	const std::filesystem::path executableDirectory =
@@ -73,7 +66,7 @@ bool VIIPERBackend::Init() {
 	if (!std::filesystem::is_regular_file(usbipExecutable))
 	{
 		std::wcerr
-			<< L"usbip.exe not found at:\n"
+			<< L"[VIIPER][ERROR] usbip.exe not found at:\n"
 			<< usbipExecutable.wstring()
 			<< L'\n';
 
@@ -86,7 +79,7 @@ bool VIIPERBackend::Init() {
 	if (!std::filesystem::is_regular_file(libusbipDll))
 	{
 		std::wcerr
-			<< L"libusbip.dll not found at:\n"
+			<< L"[VIIPER][ERROR] libusbip.dll not found at:\n"
 			<< libusbipDll.wstring()
 			<< L'\n';
 
@@ -167,7 +160,7 @@ bool VIIPERBackend::Init() {
 	char address[] = "127.0.0.1:3240";
 	config.addr = address;
 
-	if (!NewUSBServer(&config, &server, VIIPERBackend::LogCallback))
+	if (!NewUSBServer(&config, &s_Server, VIIPERBackend::LogCallback))
 	{
 		std::cerr << "[VIIPER][ERROR] NewUSBServer failed.\n";
 		return false;
@@ -177,10 +170,10 @@ bool VIIPERBackend::Init() {
 
 	std::uint32_t busId = 0;
 
-	if (!CreateUSBBus(server, &busId))
+	if (!CreateUSBBus(s_Server, &busId))
 	{
 		std::cerr << "[VIIPER][ERROR] CreateUSBBus failed.\n";
-		CloseUSBServer(server);
+		CloseUSBServer(s_Server);
 		return false;
 	}
 
@@ -191,7 +184,7 @@ bool VIIPERBackend::Init() {
 	constexpr bool autoAttachLocalhost = true;
 
 	if (!CreateXbox360Device(
-		server,
+		s_Server,
 		&controller,
 		busId,
 		autoAttachLocalhost,
@@ -200,16 +193,27 @@ bool VIIPERBackend::Init() {
 		0))
 	{
 		std::cerr << "[VIIPER][ERROR] CreateXbox360Device failed.\n";
-		CloseUSBServer(server);
+		CloseUSBServer(s_Server);
 		return false;
 	}
 
 	std::cout << "[VIIPER][INFO] Virtual Xbox 360 controller created.\n";
 
-	if (!SetXbox360RumbleCallback(controller, VIIPERBackend::RumbleCallback))
-	{
+	if (!SetXbox360RumbleCallback(
+		controller,
+		[](const Xbox360DeviceHandle _,	const std::uint8_t leftMotor, const std::uint8_t rightMotor)
+		{
+			s_RumbleCallback(leftMotor, rightMotor);
+
+			std::cout
+				<< "[RUMBLE]"
+				<< " left=" << static_cast<unsigned>(leftMotor)
+				<< " right=" << static_cast<unsigned>(rightMotor)
+				<< '\n';
+		}
+	)) {
 		std::cerr << "[VIIPER][ERROR] SetXbox360RumbleCallback failed.\n";
-		CloseUSBServer(server);
+		CloseUSBServer(s_Server);
 		return false;
 	}
 
@@ -218,7 +222,7 @@ bool VIIPERBackend::Init() {
 	if (!SetXbox360DeviceState(controller, neutralState))
 	{
 		std::cerr << "[VIIPER][ERROR] SetXbox360DeviceState failed.\n";
-		CloseUSBServer(server);
+		CloseUSBServer(s_Server);
 		return false;
 	}
 
@@ -226,5 +230,5 @@ bool VIIPERBackend::Init() {
 }
 
 void VIIPERBackend::Shutdown() {
-	CloseUSBServer(server);
+	CloseUSBServer(s_Server);
 }

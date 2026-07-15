@@ -9,6 +9,8 @@
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
 
+#include "Waveform.h"
+
 void CreateRenderTarget();
 
 void CleanupRenderTarget();
@@ -29,16 +31,19 @@ class UI
 public:
 	static bool Init();
 
-	static bool Update();
+	static bool Update(
+		const std::vector<RumbleSignal>& rumbleSignals,
+		TimeDuration historySpan = std::chrono::milliseconds(5000)
+	);
 
 	static void Shutdown();
 
 	static inline void UpdateAppState(
 		bool virtualControllerConnected,
-		bool coyoteConnected
+		bool toyConnected
 	) {
 		m_VirtualControllerConnected = virtualControllerConnected;
-		m_CoyoteConnected = coyoteConnected;
+		m_ToyConnected = toyConnected;
 	}
 
 	static inline void UpdateWaveform(
@@ -54,6 +59,6 @@ private:
 	static HWND m_Window;
 
 	static bool m_VirtualControllerConnected;
-	static bool m_CoyoteConnected;
+	static bool m_ToyConnected;
 };
 

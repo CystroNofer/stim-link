@@ -12,7 +12,11 @@ const wchar_t* UI::m_WindowClassName = L"CoyoteControllerWindow";
 HWND UI::m_Window = nullptr;
 
 bool UI::m_VirtualControllerConnected = false;
-bool UI::m_CoyoteConnected = false;
+bool UI::m_ToyConnected = false;
+
+constexpr TimeDuration HISTORY_STRIDE = std::chrono::milliseconds(50);
+constexpr ImVec4 WAVEFORM_COLOR_L(0.26f, 0.53f, 0.96f, 0.9f);
+constexpr ImVec4 WAVEFORM_COLOR_R(0.96f, 0.69f, 0.26f, 0.9f);
 
 void CreateRenderTarget()
 {
@@ -244,8 +248,10 @@ bool UI::Init()
     return true;
 }
 
-bool UI::Update()
-{
+bool UI::Update(
+    const std::vector<RumbleSignal>& rumbleSignals,
+    TimeDuration historySpan
+) {
     MSG message{};
 
     while (PeekMessageW(
@@ -282,6 +288,7 @@ bool UI::Update()
 
         ImGui::Begin("Main", nullptr, flags);
         {
+			// ========== Connectivity ==========
             ImGui::Text(
                 "Virtual controller: %s",
                 m_VirtualControllerConnected ? "Connected" : "Disconnected"
@@ -290,35 +297,119 @@ bool UI::Update()
             ImGui::SameLine();
 
             ImGui::Text(
-                "| Coyote: %s",
-                m_CoyoteConnected ? "Connected" : "Disconnected"
+                "| Toy: %s",
+                m_ToyConnected ? "Connected" : "Disconnected"
             );
 
             ImGui::Separator();
 
-            /*const float leftPanelWidth = 320.0f;
-
+            // ========== Side Panel ==========
             ImGui::BeginChild(
                 "Controls",
-                ImVec2(leftPanelWidth, 0.0f),
+                ImVec2(320.0f, 0.0f),
                 ImGuiChildFlags_Borders
             );
-
-            DrawControlPanel(state);
 
             ImGui::EndChild();
 
-            ImGui::SameLine();
+            ImGui::SameLine(); 
 
+            // ========== Signals ==========
             ImGui::BeginChild(
                 "Visualization",
-                ImVec2(0.0f, 0.0f),
-                ImGuiChildFlags_Borders
+                ImVec2(0.0f, 0.0f)
             );
 
-            DrawVisualizationPanel(state);
+            ImGui::ColorButton(
+                "##LeftMotorColor",
+                WAVEFORM_COLOR_L,
+                ImGuiColorEditFlags_NoTooltip |
+                ImGuiColorEditFlags_NoDragDrop,
+                ImVec2(12.0f, 12.0f)
+            );
+            ImGui::SameLine();
+            ImGui::TextUnformatted("Left motor");
+            ImGui::SameLine();
+            ImGui::ColorButton(
+                "##RightMotorColor",
+                WAVEFORM_COLOR_R,
+                ImGuiColorEditFlags_NoTooltip |
+                ImGuiColorEditFlags_NoDragDrop,
+                ImVec2(12.0f, 12.0f)
+            );
+            ImGui::SameLine();
+            ImGui::TextUnformatted("Right motor");
 
-            ImGui::EndChild();*/
+            const size_t numPlotPoints = static_cast<size_t>(historySpan / HISTORY_STRIDE);
+            std::vector<float> leftChSignals(numPlotPoints);
+            std::vector<float> rightChSignals(numPlotPoints);
+
+            if (rumbleSignals.size() > 0) {
+                TimeStamp startTime = std::chrono::steady_clock::now() - historySpan;
+
+                for (size_t i = rumbleSignals.size() - 1; i > 0; i--)
+                {
+                    if (rumbleSignals[i].time < startTime)
+                    {
+                        break;
+                    }
+
+                    TimeStamp t = rumbleSignals[i - 1].time;
+                    if (t < startTime)
+                    {
+                        t = startTime;
+                    }
+                    for (; t < rumbleSignals[i].time; t += HISTORY_STRIDE)
+                    {
+                        size_t index = static_cast<size_t>((t - startTime) / HISTORY_STRIDE);
+                        if (index < numPlotPoints)
+                        {
+                            leftChSignals[index] = rumbleSignals[i - 1].left;
+                            rightChSignals[index] = rumbleSignals[i - 1].right;
+                        }
+                    }
+                }
+                RumbleSignal lastSignal = rumbleSignals.back();
+                for (
+                    TimeStamp t = lastSignal.time;
+                    t < std::chrono::steady_clock::now();
+                    t += HISTORY_STRIDE
+                    ) {
+                    size_t index = static_cast<size_t>((t - startTime) / HISTORY_STRIDE);
+                    if (index < numPlotPoints)
+                    {
+                        leftChSignals[index] = lastSignal.left;
+                        rightChSignals[index] = lastSignal.right;
+                    }
+                }
+            }
+
+            ImGui::PushStyleColor(ImGuiCol_PlotLines, WAVEFORM_COLOR_L);
+            ImGui::PlotLines(
+                "##LSignals",
+                leftChSignals.data(),
+                static_cast<int>(numPlotPoints),
+                0,              // offset
+                nullptr,        // overlay text
+                0.0f,           // minimum amplitude
+                1.0f,           // maximum amplitude
+                ImVec2(-1.0f, 120.0f)
+            );
+            ImGui::PushStyleColor(ImGuiCol_PlotLines, WAVEFORM_COLOR_R);
+            ImGui::PlotLines(
+                "##RSignals",
+                rightChSignals.data(),
+                static_cast<int>(numPlotPoints),
+                0,              // offset
+                nullptr,        // overlay text
+                0.0f,           // minimum amplitude
+                1.0f,           // maximum amplitude
+                ImVec2(-1.0f, 120.0f)
+            );
+
+            ImGui::PopStyleColor(2);
+
+            ImGui::EndChild();
         }
         ImGui::End();
     }
