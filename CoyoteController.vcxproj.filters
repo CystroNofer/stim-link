@@ -15,15 +15,21 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\CoyoteBLEClient.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SignalBuffer.h">
+      <Filter>src</Filter>
+    </ClInclude>
     <ClInclude Include="src\UI.h">
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\VIIPERBackend.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="src\Waveform.h" />
-    <ClInclude Include="src\SignalBuffer.h" />
-    <ClInclude Include="src\CoyoteBLEClient.h" />
+    <ClInclude Include="src\Waveform.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="external\ImGui\backends\imgui_impl_dx11.cpp">
@@ -44,17 +50,23 @@
     <ClCompile Include="external\ImGui\imgui_widgets.cpp">
       <Filter>external\ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="src\CoyoteBLEClient.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\SignalBuffer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
     <ClCompile Include="src\UI.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\VIIPERBackend.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Waveform.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
     <ClCompile Include="src\main.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\Waveform.cpp" />
-    <ClCompile Include="src\SignalBuffer.cpp" />
-    <ClCompile Include="src\CoyoteBLEClient.cpp" />
   </ItemGroup>
 </Project>

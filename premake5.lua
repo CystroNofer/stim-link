@@ -46,6 +46,8 @@ project "CoyoteController"
 
     links
     {
+        "windowsapp",
+
         -- VIIPER
         "libVIIPER",
 

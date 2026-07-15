@@ -38,12 +38,10 @@ public:
 
 	static void Shutdown();
 
-	static inline void UpdateAppState(
-		bool virtualControllerConnected,
-		bool toyConnected
+	static inline void UpdateVControllerState(
+		bool connected
 	) {
-		m_VirtualControllerConnected = virtualControllerConnected;
-		m_ToyConnected = toyConnected;
+		m_VirtualControllerConnected = connected;
 	}
 
 	static inline void UpdateWaveform(
