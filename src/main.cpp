@@ -57,18 +57,16 @@ int main()
 				{
 					if (coyoteBLEBackend.IsConnected())
 					{
-						if (!coyoteBLEBackend.IsSafetyOn()) {
-							// Blocking is acceptable here because
-							// This is the dedicated sending thread
-							const bool success =
-								coyoteBLEBackend.WriteCommandAsync(
-									signalBuffer.Sample<4>(OUTPUT_INTERVAL)
-								).get();
+						// Blocking is acceptable here because
+						// This is the dedicated sending thread
+						const bool success =
+							coyoteBLEBackend.WriteCommandAsync(
+								signalBuffer.Sample<4>(OUTPUT_INTERVAL)
+							).get();
 
-							if (!success)
-							{
-								std::cerr << "[BLE][ERROR] Command write failed\n";
-							}
+						if (!success)
+						{
+							std::cerr << "[BLE][ERROR] Command write failed\n";
 						}
 					}
 				}

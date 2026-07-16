@@ -4,6 +4,6 @@
     <BuildType Name="Release" />
     <Platform Name="x64" />
   </Configurations>
-  <Project Path="CoyoteController.vcxproj" Id="DCF27EFB-C8EB-9D4D-F11D-83D2DD757D59" DefaultStartup="true">
+  <Project Path="StimLink.vcxproj" Id="70693CF3-5C36-97FE-854F-85A6717BCC8C" DefaultStartup="true">
   </Project>
 </Solution>

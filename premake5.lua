@@ -1,11 +1,11 @@
-workspace "CoyoteController"
+workspace "StimLink"
     architecture "x86_64"
     configurations { "Debug", "Release" }
-    startproject "CoyoteController"
+    startproject "StimLink"
 
 outputdir = "%{cfg.buildcfg}/%{cfg.architecture}"
 
-project "CoyoteController"
+project "StimLink"
     kind "ConsoleApp"
     language "C++"
     cppdialect "C++20"
@@ -15,7 +15,7 @@ project "CoyoteController"
 
     files
     {
-        -- CoyoteController
+        -- StimLink
         "src/**.h",
         "src/**.cpp",
 
