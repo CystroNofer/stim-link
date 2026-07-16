@@ -58,7 +58,7 @@
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>CC_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TC_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>src;external\libVIIPER\include;external\imgui;external\imgui\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
@@ -114,11 +114,11 @@ copy /B /Y "external\USBip\resources.dll" "bin\Release\x86_64\CoyoteController\e
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\BLE\CoyoteBLEClient.h" />
-    <ClInclude Include="src\core.h" />
-    <ClInclude Include="src\VirtualBackend\SignalBuffer.h" />
+    <ClInclude Include="src\ToyBackend\CoyoteBLEBackend.h" />
     <ClInclude Include="src\UI\UI.h" />
-    <ClInclude Include="src\VirtualBackend\VIIPERBackend.h" />
+    <ClInclude Include="src\VirtualController\SignalBuffer.h" />
+    <ClInclude Include="src\VirtualController\VIIPERBackend.h" />
+    <ClInclude Include="src\core.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="external\ImGui\backends\imgui_impl_dx11.cpp" />
@@ -127,10 +127,10 @@ copy /B /Y "external\USBip\resources.dll" "bin\Release\x86_64\CoyoteController\e
     <ClCompile Include="external\ImGui\imgui_draw.cpp" />
     <ClCompile Include="external\ImGui\imgui_tables.cpp" />
     <ClCompile Include="external\ImGui\imgui_widgets.cpp" />
-    <ClCompile Include="src\BLE\CoyoteBLEClient.cpp" />
-    <ClCompile Include="src\VirtualBackend\SignalBuffer.cpp" />
+    <ClCompile Include="src\ToyBackend\CoyoteBLEBackend.cpp" />
     <ClCompile Include="src\UI\UI.cpp" />
-    <ClCompile Include="src\VirtualBackend\VIIPERBackend.cpp" />
+    <ClCompile Include="src\VirtualController\SignalBuffer.cpp" />
+    <ClCompile Include="src\VirtualController\VIIPERBackend.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

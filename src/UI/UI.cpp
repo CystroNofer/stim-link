@@ -249,7 +249,7 @@ bool UI::Init()
 }
 
 bool UI::Update(
-    CoyoteBLEClient& bleClient,
+    CoyoteBLEBackend& toyBackend,
     const SignalBuffer& signalBuffer,
     TimeDuration historySpan
 ) {
@@ -271,14 +271,14 @@ bool UI::Update(
         }
     }
 
-	if (bleClient.IsConnected())
+	if (toyBackend.IsConnected())
     {
         m_ToyConnected = true;
     }
     else if (m_ToyConnected)
     {
 		m_ToyConnected = false;
-		bleClient.StartScan();
+		toyBackend.StartScan();
     }
 
     ImGui_ImplDX11_NewFrame();
@@ -307,10 +307,14 @@ bool UI::Update(
 
             ImGui::SameLine();
 
-            ImGui::Text(
-                "| Toy: %s",
-                m_ToyConnected ? "Connected" : "Disconnected"
-            );
+            if (m_ToyConnected)
+            {
+                ImGui::Text("| Toy: Connected  (%d%%)");
+            }
+			else
+			{
+				ImGui::Text("| Toy: Disconnected");
+			}
 
             ImGui::Separator();
 
@@ -323,22 +327,41 @@ bool UI::Update(
 
             if (m_ToyConnected)
             {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.96f, 0.37f, 0.26f, 1.0f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.42f, 0.31f, 1.0f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.63f, 0.18f, 0.18f, 1.0f));
+				if (toyBackend.IsSafetyOn())
+				{
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.52f, 0.52f, 0.52f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.33f, 0.62f, 0.31f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.20f, 0.49f, 0.19f, 1.0f));
 
-                if (ImGui::Button("STOP", ImVec2(-1.0f, 70.0f)))
+                    if (ImGui::Button("RESUME", ImVec2(-1.0f, 70.0f)))
+                    {
+                        toyBackend.SetSafety(false);
+                    }
+
+                    ImGui::PopStyleColor(3);
+				}
+				else
+				{
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.96f, 0.37f, 0.26f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.42f, 0.31f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.63f, 0.18f, 0.18f, 1.0f));
+
+                    if (ImGui::Button("STOP", ImVec2(-1.0f, 70.0f)))
+                    {
+                        toyBackend.SetSafety(true);
+                    }
+
+                    ImGui::PopStyleColor(3);
+				}
+                if (ImGui::Button("Disconnect", ImVec2(-1.0f, 0.0f)))
                 {
-					m_ToyConnected = false;
-                    bleClient.Disconnect();
+                    toyBackend.Disconnect();
                 }
-
-                ImGui::PopStyleColor(3);
             }
             else
             {
 				const std::unordered_map<std::uint64_t, BLEAdvertisementInfo> advertisements =
-					bleClient.GetAdvertisements();
+					toyBackend.GetAdvertisements();
                 if (advertisements.empty())
                 {
                     ImGui::TextUnformatted("No bluetooth devices found.");
@@ -364,7 +387,7 @@ bool UI::Update(
                         }
                         else if (ImGui::Button("Connect"))
                         {
-							bleClient.ConnectAsync(p.first);
+							toyBackend.ConnectAsync(p.first);
                         }
                     }
                 }

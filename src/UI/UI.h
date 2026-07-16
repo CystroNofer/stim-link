@@ -10,8 +10,8 @@
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
 
-#include "BLE/CoyoteBLEClient.h"
-#include "VirtualBackend/SignalBuffer.h"
+#include "ToyBackend/CoyoteBLEBackend.h"
+#include "VirtualController/SignalBuffer.h"
 
 void CreateRenderTarget();
 
@@ -34,7 +34,7 @@ public:
 	static bool Init();
 
 	static bool Update(
-		CoyoteBLEClient& bleClient,
+		CoyoteBLEBackend& toyBackend,
 		const SignalBuffer& signalBuffer,
 		TimeDuration historySpan = std::chrono::milliseconds(2000)
 	);

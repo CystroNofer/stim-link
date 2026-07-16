@@ -13,21 +13,30 @@
     <Filter Include="src">
       <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\BLE">
+      <UniqueIdentifier>{4F622FA9-BB41-AE44-C459-391B30B814A6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\UI">
+      <UniqueIdentifier>{3A4B661C-26ED-90F2-0FA8-A446FBE81743}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\VirtualBackend">
+      <UniqueIdentifier>{6BF8FE83-57DC-BFD9-C03C-BA2CAC3FAA5B}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\CoyoteBLEClient.h">
-      <Filter>src</Filter>
+    <ClInclude Include="src\BLE\CoyoteBLEClient.h">
+      <Filter>src\BLE</Filter>
     </ClInclude>
-    <ClInclude Include="src\SignalBuffer.h">
-      <Filter>src</Filter>
+    <ClInclude Include="src\UI\UI.h">
+      <Filter>src\UI</Filter>
     </ClInclude>
-    <ClInclude Include="src\UI.h">
-      <Filter>src</Filter>
+    <ClInclude Include="src\VirtualBackend\SignalBuffer.h">
+      <Filter>src\VirtualBackend</Filter>
     </ClInclude>
-    <ClInclude Include="src\VIIPERBackend.h">
-      <Filter>src</Filter>
+    <ClInclude Include="src\VirtualBackend\VIIPERBackend.h">
+      <Filter>src\VirtualBackend</Filter>
     </ClInclude>
-    <ClInclude Include="src\Waveform.h">
+    <ClInclude Include="src\core.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
@@ -50,20 +59,17 @@
     <ClCompile Include="external\ImGui\imgui_widgets.cpp">
       <Filter>external\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="src\CoyoteBLEClient.cpp">
-      <Filter>src</Filter>
+    <ClCompile Include="src\BLE\CoyoteBLEClient.cpp">
+      <Filter>src\BLE</Filter>
     </ClCompile>
-    <ClCompile Include="src\SignalBuffer.cpp">
-      <Filter>src</Filter>
+    <ClCompile Include="src\UI\UI.cpp">
+      <Filter>src\UI</Filter>
     </ClCompile>
-    <ClCompile Include="src\UI.cpp">
-      <Filter>src</Filter>
+    <ClCompile Include="src\VirtualBackend\SignalBuffer.cpp">
+      <Filter>src\VirtualBackend</Filter>
     </ClCompile>
-    <ClCompile Include="src\VIIPERBackend.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Waveform.cpp">
-      <Filter>src</Filter>
+    <ClCompile Include="src\VirtualBackend\VIIPERBackend.cpp">
+      <Filter>src\VirtualBackend</Filter>
     </ClCompile>
     <ClCompile Include="src\main.cpp">
       <Filter>src</Filter>
