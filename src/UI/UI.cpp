@@ -250,7 +250,7 @@ bool UI::Init()
 
 bool UI::Update(
     CoyoteBLEBackend& toyBackend,
-    const SignalBuffer& signalBuffer,
+    SignalBuffer& signalBuffer,
     TimeDuration historySpan
 ) {
     MSG message{};
@@ -327,6 +327,7 @@ bool UI::Update(
 
             if (m_ToyConnected)
             {
+				// ===== Safety Button =====
 				if (toyBackend.IsSafetyOn())
 				{
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.52f, 0.52f, 0.52f, 1.0f));
@@ -353,6 +354,42 @@ bool UI::Update(
 
                     ImGui::PopStyleColor(3);
 				}
+
+				ImGui::Separator();
+                // ===== Strength =====
+                float strength = signalBuffer.GetStrengthAmp();
+
+                const float buttonWidth = 40.0f;
+                const float spacing = ImGui::GetStyle().ItemSpacing.x;
+                char label[15];
+                std::snprintf(label, 15, "Strength: %.0f", strength);
+                const float textWidth = ImGui::CalcTextSize(label).x;
+                const float rowWidth =
+                    buttonWidth +
+                    spacing +
+                    textWidth +
+                    spacing +
+                    buttonWidth;
+                const float availableWidth = ImGui::GetContentRegionAvail().x;
+                const float offset = max(0.0f, (availableWidth - rowWidth) * 0.5f);
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset);
+
+                if (ImGui::Button("-", ImVec2(buttonWidth, 0.0f)))
+                {
+                    strength = max(0.0f, strength - 1.0f);
+                }
+                ImGui::SameLine();
+				ImGui::Text("Strength: %.0f", strength);
+                ImGui::SameLine();
+                if (ImGui::Button("+", ImVec2(buttonWidth, 0.0f)))
+                {
+                    strength += 1.0f;
+                }
+
+                signalBuffer.SetStrengthAmp(strength);
+
+                ImGui::Separator();
+                // ===== Disconnect =====
                 if (ImGui::Button("Disconnect", ImVec2(-1.0f, 0.0f)))
                 {
                     toyBackend.Disconnect();
@@ -427,33 +464,33 @@ bool UI::Update(
             std::vector<float> leftChSignals(numPlotPoints);
             std::vector<float> rightChSignals(numPlotPoints);
 
-			std::vector<RumbleSignal> rumbleSignals = signalBuffer.GetSnapshot();
-            if (rumbleSignals.size() > 0) {
+			SignalBufferSnapshot signalBufferSnapshot = signalBuffer.GetSnapshot();
+            if (signalBufferSnapshot->size() > 0) {
                 TimeStamp startTime = std::chrono::steady_clock::now() - historySpan;
 
-                for (size_t i = rumbleSignals.size() - 1; i > 0; i--)
+                for (size_t i = signalBufferSnapshot->size() - 1; i > 0; i--)
                 {
-                    if (rumbleSignals[i].time < startTime)
+                    if ((*signalBufferSnapshot)[i].time < startTime)
                     {
                         break;
                     }
 
-                    TimeStamp t = rumbleSignals[i - 1].time;
+                    TimeStamp t = (*signalBufferSnapshot)[i - 1].time;
                     if (t < startTime)
                     {
                         t = startTime;
                     }
-                    for (; t < rumbleSignals[i].time; t += HISTORY_STRIDE)
+                    for (; t < (*signalBufferSnapshot)[i].time; t += HISTORY_STRIDE)
                     {
                         size_t index = static_cast<size_t>((t - startTime) / HISTORY_STRIDE);
                         if (index < numPlotPoints)
                         {
-                            leftChSignals[index] = rumbleSignals[i - 1].left;
-                            rightChSignals[index] = rumbleSignals[i - 1].right;
+                            leftChSignals[index] = (*signalBufferSnapshot)[i - 1].left;
+                            rightChSignals[index] = (*signalBufferSnapshot)[i - 1].right;
                         }
                     }
                 }
-                RumbleSignal lastSignal = rumbleSignals.back();
+                RumbleSignal lastSignal = (*signalBufferSnapshot).back();
                 for (
                     TimeStamp t = lastSignal.time;
                     t < std::chrono::steady_clock::now();

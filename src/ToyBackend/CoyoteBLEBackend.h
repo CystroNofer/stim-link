@@ -27,7 +27,6 @@ public:
 
 	[[nodiscard]]
 	std::unordered_map<std::uint64_t, BLEAdvertisementInfo> GetAdvertisements();
-	void UpdateAdvertisements();
 
 	IAsyncOperation<bool> ConnectAsync(std::uint64_t address);
 
@@ -36,14 +35,14 @@ public:
 	[[nodiscard]]
 	bool IsConnected();
 
-	IAsyncOperation<bool> WriteCommandAsync(std::uint8_t strength);
+	IAsyncOperation<bool> WriteCommandAsync(WaveformSample<4> waveformSamples);
 
-	inline void SetSafety(bool safety) { m_Safety.store(safety); }
+	inline void SetSafety(bool safety) { m_SafetyOn.store(safety); }
 	[[nodiscard]]
-	inline bool IsSafetyOn() const { return m_Safety.load(); }
+	inline bool IsSafetyOn() const { return m_SafetyOn.load(); }
 
 private:
-	std::atomic<bool> m_Safety{ false };
+	std::atomic<bool> m_SafetyOn{ false };
 
 	Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher m_AdvertisementWatcher{ nullptr };
 	winrt::event_token

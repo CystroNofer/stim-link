@@ -35,7 +35,7 @@ public:
 
 	static bool Update(
 		CoyoteBLEBackend& toyBackend,
-		const SignalBuffer& signalBuffer,
+		SignalBuffer& signalBuffer,
 		TimeDuration historySpan = std::chrono::milliseconds(2000)
 	);
 

@@ -13,7 +13,7 @@
 int main()
 {
 	// ==================== Signal Buffer ====================
-	SignalBuffer signalBuffer(std::chrono::milliseconds(500));
+	SignalBuffer signalBuffer;
 
 	// ==================== libVIIPER Init ====================
 	std::cout << "[MAIN][INFO] Starting libVIIPER...\n";
@@ -47,14 +47,11 @@ int main()
 		{
 			using clock = std::chrono::steady_clock;
 
-			constexpr TimeDuration interval =
-				std::chrono::milliseconds(100);
-
 			TimeStamp nextSendTime = clock::now();
 
 			while (!stopToken.stop_requested())
 			{
-				nextSendTime += interval;
+				nextSendTime += OUTPUT_INTERVAL;
 				
 				try
 				{
@@ -64,7 +61,9 @@ int main()
 							// Blocking is acceptable here because
 							// This is the dedicated sending thread
 							const bool success =
-								coyoteBLEBackend.WriteCommandAsync(5).get();
+								coyoteBLEBackend.WriteCommandAsync(
+									signalBuffer.Sample<4>(OUTPUT_INTERVAL)
+								).get();
 
 							if (!success)
 							{
@@ -95,23 +94,24 @@ int main()
 	// ==================== Main Loop ====================
 	bool running = true;
 	while (running) {
-		coyoteBLEBackend.UpdateAdvertisements();
-		signalBuffer.UpdateSnapshot();
-
 		if (!UI::Update(coyoteBLEBackend, signalBuffer)) {
+			// BLE
+			if (sendThread.joinable()) {
+				sendThread.request_stop();
+				sendThread.join();
+			}
+
 			coyoteBLEBackend.Disconnect();
+			coyoteBLEBackend.StopScan();
+
+			// VIIPER
+			std::cout << "[MAIN][INFO] Closing libVIIPER...\n";
+			VIIPERBackend::Shutdown();
+
+			// UI
 			UI::Shutdown();
+
 			running = false;
 		}
 	}
-
-	if (sendThread.joinable()) {
-		sendThread.request_stop();
-		sendThread.join();
-	}
-
-	coyoteBLEBackend.StopScan();
-
-	std::cout << "[MAIN][INFO] Closing libVIIPER...\n";
-	VIIPERBackend::Shutdown();
 }

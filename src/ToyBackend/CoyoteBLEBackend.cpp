@@ -52,32 +52,31 @@ enum class StrengthMode : std::uint8_t
 	Absolute = 0b11
 };
 
+constexpr std::uint8_t packageStrengthMode =
+static_cast<std::uint8_t>(
+	(static_cast<std::uint8_t>(StrengthMode::Absolute) << 2) |
+	(static_cast<std::uint8_t>(StrengthMode::Absolute))
+	);
+
 std::array<std::uint8_t, 20> BuildB0Packet(
 	std::uint8_t sequence,
-	StrengthMode modeA,
-	StrengthMode modeB,
-	std::uint8_t strengthA,
-	std::uint8_t strengthB,
+	WaveformSample<4> waveformSamples,
 	const std::array<std::uint8_t, 4>& frequencyA = { 10, 10, 10, 10 },
-	const std::array<std::uint8_t, 4>& waveformA = { 100, 100, 100, 100 },
-	const std::array<std::uint8_t, 4>& frequencyB = { 10, 10, 10, 10 },
-	const std::array<std::uint8_t, 4>& waveformB = { 100, 100, 100, 100 })
-{
+	const std::array<std::uint8_t, 4>& frequencyB = { 10, 10, 10, 10 }
+) {
 	std::array<std::uint8_t, 20> packet{};
 
 	sequence &= 0x0F;
 
-	const std::uint8_t modes =
-		static_cast<std::uint8_t>(
-			(static_cast<std::uint8_t>(modeA) << 2) |
-			static_cast<std::uint8_t>(modeB)
-		);
-
 	packet[0] = 0xB0;
-	packet[1] = static_cast<std::uint8_t>((sequence << 4) | modes);
+	packet[1] = static_cast<std::uint8_t>((sequence << 4) | packageStrengthMode);
 
-	packet[2] = strengthA;
-	packet[3] = strengthB;
+	packet[2] = static_cast<std::uint8_t>(
+		std::clamp(waveformSamples.maxStrengthL, 0.0f, MAX_STRENGTH)
+	);
+	packet[3] = static_cast<std::uint8_t>(
+		std::clamp(waveformSamples.maxStrengthR, 0.0f, MAX_STRENGTH)
+	);
 
 	std::copy(
 		frequencyA.begin(),
@@ -85,9 +84,20 @@ std::array<std::uint8_t, 20> BuildB0Packet(
 		packet.begin() + 4
 	);
 
+	std::array<std::uint8_t, 4> waveformStrengthLBytes{};
+	std::transform(
+		waveformSamples.waveformStrengthL.begin(),
+		waveformSamples.waveformStrengthL.end(),
+		waveformStrengthLBytes.begin(),
+		[](float value)
+		{
+			value = std::clamp(value, 0.0f, 1.0f) * 100.0f;
+			return static_cast<std::uint8_t>(value);
+		}
+	);
 	std::copy(
-		waveformA.begin(),
-		waveformA.end(),
+		waveformStrengthLBytes.begin(),
+		waveformStrengthLBytes.end(),
 		packet.begin() + 8
 	);
 
@@ -97,9 +107,21 @@ std::array<std::uint8_t, 20> BuildB0Packet(
 		packet.begin() + 12
 	);
 
+	std::array<std::uint8_t, 4> waveformStrengthRBytes{};
+	std::transform(
+		waveformSamples.waveformStrengthR.begin(),
+		waveformSamples.waveformStrengthR.end(),
+		waveformStrengthRBytes.begin(),
+		[](float value)
+		{
+			value = std::clamp(value, 0.0f, 1.0f) * 100.0f;
+			return static_cast<std::uint8_t>(value);
+		}
+	);
+
 	std::copy(
-		waveformB.begin(),
-		waveformB.end(),
+		waveformStrengthRBytes.begin(),
+		waveformStrengthRBytes.end(),
 		packet.begin() + 16
 	);
 
@@ -183,12 +205,6 @@ void CoyoteBLEBackend::StopScan()
 
 std::unordered_map<std::uint64_t, BLEAdvertisementInfo> CoyoteBLEBackend::GetAdvertisements()
 {
-	std::scoped_lock lock(m_Mutex);
-	return m_Advertisements;
-}
-
-void CoyoteBLEBackend::UpdateAdvertisements()
-{
 	/* The scanning is not frequent, so locking at every frame is fine */
 	std::scoped_lock lock(m_Mutex);
 
@@ -200,6 +216,8 @@ void CoyoteBLEBackend::UpdateAdvertisements()
 				std::chrono::seconds(5);
 		}
 	);
+
+	return m_Advertisements;
 }
 
 IAsyncOperation<bool> CoyoteBLEBackend::ConnectAsync(std::uint64_t address)
@@ -253,7 +271,7 @@ IAsyncOperation<bool> CoyoteBLEBackend::ConnectAsync(std::uint64_t address)
 		//		co_return false;
 		//	}
 		//}
-		
+
 		// ==================== Services & Characteristics ====================
 		// ========== Command Services ==========
 		const GattDeviceServicesResult commandServiceResult =
@@ -307,7 +325,7 @@ IAsyncOperation<bool> CoyoteBLEBackend::ConnectAsync(std::uint64_t address)
 		if (
 			commandNotifyResult.Status() != GattCommunicationStatus::Success ||
 			commandNotifyResult.Characteristics().Size() == 0
-		) {
+			) {
 			std::scoped_lock lock(m_Mutex);
 			m_Advertisements[address].connectionState = BLEConnectionState::Failed;
 			co_return false;
@@ -336,12 +354,21 @@ IAsyncOperation<bool> CoyoteBLEBackend::ConnectAsync(std::uint64_t address)
 
 					reader.ReadBytes(bytes);
 
+#ifdef TC_DEBUG
+					//std::cerr
+					//	<< "[BLE][INFO] 0xB1:"
+					//	<< " sequence=" << static_cast<int>(bytes[1])
+					//	<< " A=" << static_cast<int>(bytes[2])
+					//	<< " B=" << static_cast<int>(bytes[3])
+					//	<< '\r';
+#endif // TC_DEBUG
+
 					switch (bytes[0])
 					{
 					case 0xB1:
 						// This currently does NOT work as intended
 						// The 0-sequenced notification is heavily delayed
-						
+
 						//if (bytes.size() == 4 && bytes[1] == 0)
 						//{
 						//	SetSafety(true);
@@ -536,8 +563,11 @@ bool CoyoteBLEBackend::IsConnected()
 		m_Device.ConnectionStatus() == Bluetooth::BluetoothConnectionStatus::Connected;
 }
 
-IAsyncOperation<bool> CoyoteBLEBackend::WriteCommandAsync(std::uint8_t strength)
+IAsyncOperation<bool> CoyoteBLEBackend::WriteCommandAsync(WaveformSample<4> waveformSamples)
 {
+	if (m_SafetyOn.load())
+		co_return true;
+
 	using namespace winrt::Windows::Devices::Bluetooth::GenericAttributeProfile;
 
 	GattCharacteristic writeCharacteristic{ nullptr };
@@ -550,13 +580,7 @@ IAsyncOperation<bool> CoyoteBLEBackend::WriteCommandAsync(std::uint8_t strength)
 		co_return false;
 
 	DataWriter writer;
-	writer.WriteBytes(BuildB0Packet(
-		10,
-		StrengthMode::Absolute,
-		StrengthMode::Absolute,
-		strength,
-		strength
-	));
+	writer.WriteBytes(BuildB0Packet(10, waveformSamples));
 
 	const GattWriteResult result =
 		co_await writeCharacteristic.WriteValueWithResultAsync(
