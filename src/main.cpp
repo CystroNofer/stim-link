@@ -1,11 +1,10 @@
-// Waveform
-#include "SignalBuffer.h"
 // ImGui
-#include "UI.h"
+#include "UI/UI.h"
 // VIIPER
-#include "VIIPERBackend.h"
+#include "VirtualBackend/SignalBuffer.h"
+#include "VirtualBackend/VIIPERBackend.h"
 // BLE
-#include "CoyoteBLEClient.h"
+#include "BLE/CoyoteBLEClient.h"
 
 #include <cstddef>
 #include <mutex>
@@ -13,16 +12,8 @@
 
 int main()
 {
-	//// ==================== Signal Buffer ====================
-	//SignalBuffer buffer(std::chrono::milliseconds(500));
-
-	//// ==================== UI Init ====================
-	//if (!UI::Init())
-	//{
-	//	std::cout << "[MAIN][ERROR] Failed to initialize UI\n";
-	//	return 1;
-	//}
-	//std::cout << "[MAIN][INFO] UI initialized\n";
+	// ==================== Signal Buffer ====================
+	SignalBuffer signalBuffer(std::chrono::milliseconds(500));
 
 	//// ==================== libVIIPER Init ====================
 	//std::cout << "[MAIN][INFO] Starting libVIIPER...\n";
@@ -43,21 +34,28 @@ int main()
 	// ==================== BLE Init ====================
 	CoyoteBLEClient coyoteBLEClient;
 
-	coyoteBLEClient.StartScan();
+	// ==================== UI Init ====================
+	if (!UI::Init())
+	{
+		std::cout << "[MAIN][ERROR] Failed to initialize UI\n";
+		return 1;
+	}
+	std::cout << "[MAIN][INFO] UI initialized\n";
 
-	std::cout << "[BLE][INFO] Scanning... (Press Enter to stop)\n";
-	std::cin.get();
+	// ==================== Main Loop ====================
+	bool running = true;
+	while (running) {
+		coyoteBLEClient.UpdateAdvertisements();
+		signalBuffer.UpdateSnapshot();
+
+		if (!UI::Update(coyoteBLEClient, signalBuffer))
+		{
+			UI::Shutdown();
+			running = false;
+		}
+	}
 
 	coyoteBLEClient.StopScan();
-
-	//// ==================== Main Loop ====================
-	//bool running = true;
-	//while (running) {
-	//	if (!UI::Update(buffer.GetSnapshot(), std::chrono::milliseconds(2000))) {
-	//		UI::Shutdown();
-	//		running = false;
-	//	}
-	//}
 
 	//std::cout << "[MAIN][INFO] Closing libVIIPER...\n";
 	//VIIPERBackend::Shutdown();

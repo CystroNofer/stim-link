@@ -114,11 +114,11 @@ copy /B /Y "external\USBip\resources.dll" "bin\Release\x86_64\CoyoteController\e
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\CoyoteBLEClient.h" />
-    <ClInclude Include="src\SignalBuffer.h" />
-    <ClInclude Include="src\UI.h" />
-    <ClInclude Include="src\VIIPERBackend.h" />
-    <ClInclude Include="src\Waveform.h" />
+    <ClInclude Include="src\BLE\CoyoteBLEClient.h" />
+    <ClInclude Include="src\core.h" />
+    <ClInclude Include="src\VirtualBackend\SignalBuffer.h" />
+    <ClInclude Include="src\UI\UI.h" />
+    <ClInclude Include="src\VirtualBackend\VIIPERBackend.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="external\ImGui\backends\imgui_impl_dx11.cpp" />
@@ -127,11 +127,10 @@ copy /B /Y "external\USBip\resources.dll" "bin\Release\x86_64\CoyoteController\e
     <ClCompile Include="external\ImGui\imgui_draw.cpp" />
     <ClCompile Include="external\ImGui\imgui_tables.cpp" />
     <ClCompile Include="external\ImGui\imgui_widgets.cpp" />
-    <ClCompile Include="src\CoyoteBLEClient.cpp" />
-    <ClCompile Include="src\SignalBuffer.cpp" />
-    <ClCompile Include="src\UI.cpp" />
-    <ClCompile Include="src\VIIPERBackend.cpp" />
-    <ClCompile Include="src\Waveform.cpp" />
+    <ClCompile Include="src\BLE\CoyoteBLEClient.cpp" />
+    <ClCompile Include="src\VirtualBackend\SignalBuffer.cpp" />
+    <ClCompile Include="src\UI\UI.cpp" />
+    <ClCompile Include="src\VirtualBackend\VIIPERBackend.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

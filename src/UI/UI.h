@@ -1,5 +1,6 @@
 #pragma once
 
+#include <unordered_map>
 #include <Windows.h>
 
 #include <d3d11.h>
@@ -9,7 +10,8 @@
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
 
-#include "Waveform.h"
+#include "BLE/CoyoteBLEClient.h"
+#include "VirtualBackend/SignalBuffer.h"
 
 void CreateRenderTarget();
 
@@ -32,24 +34,22 @@ public:
 	static bool Init();
 
 	static bool Update(
-		const std::vector<RumbleSignal>& rumbleSignals,
-		TimeDuration historySpan = std::chrono::milliseconds(5000)
+		CoyoteBLEClient& bleClient,
+		const SignalBuffer& signalBuffer,
+		TimeDuration historySpan = std::chrono::milliseconds(2000)
 	);
 
 	static void Shutdown();
 
-	static inline void UpdateVControllerState(
-		bool connected
-	) {
+	static inline void UpdateVControllerState(bool connected)
+	{
 		m_VirtualControllerConnected = connected;
 	}
 
-	static inline void UpdateWaveform(
-		float leftChannel,
-		float rightChannel
-	) {
-
-	}
+	//static inline void UpdateToyState(bool connected)
+	//{
+	//	m_ToyConnected = connected;
+	//}
 
 private:
 	static HINSTANCE m_HInstance;

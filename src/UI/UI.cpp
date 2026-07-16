@@ -249,7 +249,8 @@ bool UI::Init()
 }
 
 bool UI::Update(
-    const std::vector<RumbleSignal>& rumbleSignals,
+    CoyoteBLEClient& bleClient,
+    const SignalBuffer& signalBuffer,
     TimeDuration historySpan
 ) {
     MSG message{};
@@ -268,6 +269,16 @@ bool UI::Update(
         {
             return false;
         }
+    }
+
+	if (bleClient.IsConnected())
+    {
+        m_ToyConnected = true;
+    }
+    else if (m_ToyConnected)
+    {
+		m_ToyConnected = false;
+		bleClient.StartScan();
     }
 
     ImGui_ImplDX11_NewFrame();
@@ -310,6 +321,55 @@ bool UI::Update(
                 ImGuiChildFlags_Borders
             );
 
+            if (m_ToyConnected)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.96f, 0.37f, 0.26f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.42f, 0.31f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.63f, 0.18f, 0.18f, 1.0f));
+
+                if (ImGui::Button("STOP", ImVec2(-1.0f, 70.0f)))
+                {
+					m_ToyConnected = false;
+                    bleClient.Disconnect();
+                }
+
+                ImGui::PopStyleColor(3);
+            }
+            else
+            {
+				const std::unordered_map<std::uint64_t, BLEAdvertisementInfo> advertisements =
+					bleClient.GetAdvertisements();
+                if (advertisements.empty())
+                {
+                    ImGui::TextUnformatted("No bluetooth devices found.");
+                }
+                else
+                {
+                    for (const std::pair<std::uint64_t, BLEAdvertisementInfo>& p : advertisements)
+                    {
+                        ImGui::Text("%s", p.second.name.c_str());
+                        ImGui::Text("RSSI: %d dBm", p.second.rssi);
+
+                        ImGui::SameLine();
+
+                        if (p.second.connectionState == BLEConnectionState::Connected)
+                        {
+                            ImGui::TextUnformatted("Connected");
+                        }
+                        else if (p.second.connectionState == BLEConnectionState::Connecting)
+                        {
+                            ImGui::BeginDisabled();
+                            ImGui::Button("Connecting...");
+                            ImGui::EndDisabled();
+                        }
+                        else if (ImGui::Button("Connect"))
+                        {
+							bleClient.ConnectAsync(p.first);
+                        }
+                    }
+                }
+            }
+
             ImGui::EndChild();
 
             ImGui::SameLine(); 
@@ -344,6 +404,7 @@ bool UI::Update(
             std::vector<float> leftChSignals(numPlotPoints);
             std::vector<float> rightChSignals(numPlotPoints);
 
+			std::vector<RumbleSignal> rumbleSignals = signalBuffer.GetSnapshot();
             if (rumbleSignals.size() > 0) {
                 TimeStamp startTime = std::chrono::steady_clock::now() - historySpan;
 

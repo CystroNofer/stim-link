@@ -6,17 +6,13 @@
 #include <winrt/Windows.Devices.Bluetooth.Advertisement.h>
 #include <winrt/Windows.Devices.Bluetooth.GenericAttributeProfile.h>
 
-#include "Waveform.h"
+#include <unordered_map>
+#include <mutex>
+
+#include "core.h"
 
 using namespace winrt::Windows::Foundation;
 using namespace winrt::Windows::Devices;
-
-struct BLEDeviceInfo
-{
-    std::uint64_t Address{};
-    std::string Name;
-    std::int16_t rssi{};
-};
 
 class CoyoteBLEClient
 {
@@ -25,6 +21,10 @@ public:
 
     void StartScan();
     void StopScan();
+
+    [[nodiscard]]
+    std::unordered_map<std::uint64_t, BLEAdvertisementInfo> GetAdvertisements() const;
+    void UpdateAdvertisements();
 
     IAsyncOperation<bool> ConnectAsync(std::uint64_t address);
 
@@ -48,5 +48,9 @@ private:
         m_CommandWriteCharacteristic{ nullptr },
         m_CommandNotifyCharacteristic{ nullptr },
         m_BatteryReadCharacteristic{ nullptr };
+
+	std::unordered_map<std::uint64_t, BLEAdvertisementInfo> m_Advertisements{};
+
+    std::mutex m_Mutex;
 };
 

@@ -4,7 +4,7 @@
 #include <vector>
 #include <mutex>
 
-#include "Waveform.h"
+#include "core.h"
 
 class SignalBuffer
 {
@@ -14,7 +14,8 @@ public:
     void Push(std::uint8_t left, std::uint8_t right);
 
     [[nodiscard]]
-    const std::vector<RumbleSignal>& GetSnapshot();
+    const std::vector<RumbleSignal>& GetSnapshot() const;
+    void UpdateSnapshot();
 
 private:
     mutable std::mutex m_Mutex;

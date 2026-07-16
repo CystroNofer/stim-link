@@ -46,6 +46,9 @@ constexpr winrt::guid BatteryCharacteristicUuid{
 CoyoteBLEClient::CoyoteBLEClient() {
 	winrt::init_apartment();
 	//winrt::init_apartment(winrt::apartment_type::multi_threaded);
+
+	StartScan();
+	std::cout << "[BLE][INFO] Scanning...\n";
 }
 
 void CoyoteBLEClient::StartScan()
@@ -76,22 +79,11 @@ void CoyoteBLEClient::StartScan()
 			if (name != "47L121000")
 				return;
 
-			BLEDeviceInfo device{
-				.Address = args.BluetoothAddress(),
-				.Name = name,
-				.rssi = args.RawSignalStrengthInDBm()
-			};
-
-			std::cout
-				<< "Found Coyote V3\n"
-				<< "Name: " << device.Name << '\n'
-				<< "Address: 0x"
-				<< std::hex << device.Address << std::dec << '\n'
-				<< "RSSI: " << device.rssi << " dBm\n";
-
-			if (ConnectAsync(device.Address)) {
-				StopScan();
-			}
+			std::scoped_lock lock(m_Mutex);
+			BLEAdvertisementInfo& ad = m_Advertisements[args.BluetoothAddress()];
+			ad.name = name;
+			ad.rssi = args.RawSignalStrengthInDBm();
+			ad.lastSeen = std::chrono::steady_clock::now();
 		}
 	);
 
@@ -122,8 +114,39 @@ void CoyoteBLEClient::StopScan()
 	m_AdvertisementWatcher = nullptr;
 }
 
+std::unordered_map<std::uint64_t, BLEAdvertisementInfo> CoyoteBLEClient::GetAdvertisements() const
+{
+	return m_Advertisements;
+}
+
+void CoyoteBLEClient::UpdateAdvertisements()
+{
+	if (IsConnected())
+		return;
+
+	/* The scanning is not frequent, so locking at every frame is fine */
+	std::scoped_lock lock(m_Mutex);
+
+	std::erase_if(
+		m_Advertisements,
+		[](const std::pair<const std::uint64_t, BLEAdvertisementInfo>& p) {
+			return
+				std::chrono::steady_clock::now() - p.second.lastSeen >
+				std::chrono::seconds(5);
+		}
+	);
+}
+
 IAsyncOperation<bool> CoyoteBLEClient::ConnectAsync(std::uint64_t address)
 {
+	{
+		std::scoped_lock lock(m_Mutex);
+		if (!m_Advertisements.contains(address))
+			co_return false;
+
+		m_Advertisements[address].connectionState = BLEConnectionState::Connecting;
+	}
+
 	using namespace winrt::Windows::Devices::Bluetooth;
 	using namespace winrt::Windows::Devices::Bluetooth::GenericAttributeProfile;
 
@@ -134,8 +157,11 @@ IAsyncOperation<bool> CoyoteBLEClient::ConnectAsync(std::uint64_t address)
 		BluetoothLEDevice device =
 			co_await BluetoothLEDevice::FromBluetoothAddressAsync(address);
 
-		if (!device)
+		if (!device) {
+			std::scoped_lock lock(m_Mutex);
+			m_Advertisements[address].connectionState = BLEConnectionState::Failed;
 			co_return false;
+		}
 
 		// ==================== Services & Characteristics ====================
 		// ========== Command Services ==========
@@ -147,6 +173,8 @@ IAsyncOperation<bool> CoyoteBLEClient::ConnectAsync(std::uint64_t address)
 
 		if (mainServiceResult.Status() != GattCommunicationStatus::Success)
 		{
+			std::scoped_lock lock(m_Mutex);
+			m_Advertisements[address].connectionState = BLEConnectionState::Failed;
 			co_return false;
 		}
 
@@ -154,7 +182,11 @@ IAsyncOperation<bool> CoyoteBLEClient::ConnectAsync(std::uint64_t address)
 			mainServiceResult.Services();
 
 		if (commandServices.Size() == 0)
+		{
+			std::scoped_lock lock(m_Mutex);
+			m_Advertisements[address].connectionState = BLEConnectionState::Failed;
 			co_return false;
+		}
 
 		GattDeviceService commandService = commandServices.GetAt(0);
 
@@ -168,7 +200,9 @@ IAsyncOperation<bool> CoyoteBLEClient::ConnectAsync(std::uint64_t address)
 		if (
 			commandWriteResult.Status() != GattCommunicationStatus::Success ||
 			commandWriteResult.Characteristics().Size() == 0
-		) {
+			) {
+			std::scoped_lock lock(m_Mutex);
+			m_Advertisements[address].connectionState = BLEConnectionState::Failed;
 			co_return false;
 		}
 
@@ -182,7 +216,9 @@ IAsyncOperation<bool> CoyoteBLEClient::ConnectAsync(std::uint64_t address)
 		if (
 			commandNotifyResult.Status() != GattCommunicationStatus::Success ||
 			commandNotifyResult.Characteristics().Size() == 0
-		) {
+			) {
+			std::scoped_lock lock(m_Mutex);
+			m_Advertisements[address].connectionState = BLEConnectionState::Failed;
 			co_return false;
 		}
 
@@ -195,6 +231,8 @@ IAsyncOperation<bool> CoyoteBLEClient::ConnectAsync(std::uint64_t address)
 
 		if (batteryServiceResult.Status() != GattCommunicationStatus::Success)
 		{
+			std::scoped_lock lock(m_Mutex);
+			m_Advertisements[address].connectionState = BLEConnectionState::Failed;
 			co_return false;
 		}
 
@@ -202,7 +240,11 @@ IAsyncOperation<bool> CoyoteBLEClient::ConnectAsync(std::uint64_t address)
 			batteryServiceResult.Services();
 
 		if (batteryServices.Size() == 0)
+		{
+			std::scoped_lock lock(m_Mutex);
+			m_Advertisements[address].connectionState = BLEConnectionState::Failed;
 			co_return false;
+		}
 
 		GattDeviceService batteryService = batteryServices.GetAt(0);
 
@@ -217,9 +259,12 @@ IAsyncOperation<bool> CoyoteBLEClient::ConnectAsync(std::uint64_t address)
 			batteryReadResult.Status() != GattCommunicationStatus::Success ||
 			batteryReadResult.Characteristics().Size() == 0)
 		{
+			std::scoped_lock lock(m_Mutex);
+			m_Advertisements[address].connectionState = BLEConnectionState::Failed;
 			co_return false;
-		}	
+		}
 
+		std::scoped_lock lock(m_Mutex);
 		// Store these only after every discovery step succeeds.
 		m_Device = device;
 
@@ -233,11 +278,16 @@ IAsyncOperation<bool> CoyoteBLEClient::ConnectAsync(std::uint64_t address)
 		m_BatteryReadCharacteristic =
 			batteryReadResult.Characteristics().GetAt(0);
 
+		m_Advertisements[address].connectionState = BLEConnectionState::Connected;
+
+		StopScan();
+
 		co_return true;
 	}
 	catch (const winrt::hresult_error&)
 	{
 		Disconnect();
+		m_Advertisements[address].connectionState = BLEConnectionState::Failed;
 		co_return false;
 	}
 }
@@ -269,7 +319,6 @@ void CoyoteBLEClient::Disconnect()
 
 bool CoyoteBLEClient::IsConnected() const
 {
-	return
-		m_Device &&
+	return m_Device &&
 		m_Device.ConnectionStatus() == Bluetooth::BluetoothConnectionStatus::Connected;
 }

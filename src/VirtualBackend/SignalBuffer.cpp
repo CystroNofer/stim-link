@@ -31,7 +31,13 @@ void SignalBuffer::Push(std::uint8_t left, std::uint8_t right)
     }
 }
 
-const std::vector<RumbleSignal>& SignalBuffer::GetSnapshot()
+const std::vector<RumbleSignal>& SignalBuffer::GetSnapshot() const
+{
+    //std::scoped_lock lock(m_Mutex);
+    return m_ReadBuffer;
+}
+
+void SignalBuffer::UpdateSnapshot()
 {
     if (std::chrono::steady_clock::now() - m_LastSwapTime >= m_SwapInterval)
     {
@@ -42,7 +48,4 @@ const std::vector<RumbleSignal>& SignalBuffer::GetSnapshot()
         );
         m_LastSwapTime = std::chrono::steady_clock::now();
     }
-
-    //std::scoped_lock lock(m_Mutex);
-    return m_ReadBuffer;
 }
