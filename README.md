@@ -2,9 +2,9 @@
 
 # StimLink
 
-  **Controller vibration feels unimpressive during your epic gameplay?**
+  **Missing the exciting controller vibrations on mouse and keyboard?**
 
-**StimLink** is a Windows desktop application for converting real-time controller vibrations into controllable output for supported e-stim devices.
+**StimLink** is a Windows desktop application for converting controller feedbacks during mouse & keyboard gameplay into controllable output for supported e-stim devices.
 
 # ⚠️ SAFETY WARNING — READ BEFORE USE
 
@@ -24,6 +24,7 @@ The project currently focuses on direct Bluetooth Low Energy communication with 
   
 
 > This project is under active development. Interfaces, behavior, and protocol handling are subject to change.
+> Currently only supports mouse & keyboard.
 
   
 
