@@ -39,22 +39,6 @@ The project currently focuses on direct Bluetooth Low Energy communication with 
 The current backend communicates directly with the Coyote V3 through Bluetooth Low Energy.
 
   
-
-Implemented functionality includes:
-
-  
-
-* BLE advertisement scanning
-
-* GATT service and characteristic discovery
-
-* Command writes through the Coyote write characteristic
-
-* Device notifications through the notify characteristic
-
-* Continuous waveform packet transmission
-
-  
 ----------
 **Additional device backends may be added in the future**
 
@@ -97,6 +81,8 @@ premake5  vs2022
 ## Usage
 
   
+
+0. Install USB/IP kernel. (Future releases will include auto-installer for USB/IP)
 
 1. Start the application.
 

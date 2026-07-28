@@ -177,17 +177,15 @@ bool VIIPERBackend::Init(RumbleCallback rumbleCallback) {
 		return false;
 	}
 
-	std::cout << "[VIIPER][INFO] USB bus created: " << busId << '\n';
+	std::cout << "[VIIPER][INFO] USB bus created: " << busId << "\n";
 
 	Xbox360DeviceHandle controller = 0;
-
-	constexpr bool autoAttachLocalhost = true;
 
 	if (!CreateXbox360Device(
 		s_Server,
 		&controller,
 		busId,
-		autoAttachLocalhost,
+		true,  // autoAttachLocalhost
 		0,
 		0,
 		0))
