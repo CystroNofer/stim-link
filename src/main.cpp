@@ -42,6 +42,7 @@ int main()
 	}
 	std::cout << "[MAIN][INFO] UI initialized\n";
 
+	// ==================== Waveform Sending Thread ====================
 	std::jthread sendThread = std::jthread(
 		[&](std::stop_token stopToken)
 		{
@@ -55,7 +56,7 @@ int main()
 				
 				try
 				{
-					if (coyoteBLEBackend.IsConnected())
+					if (coyoteBLEBackend.IsPulseUnitConnected())
 					{
 						// Blocking is acceptable here because
 						// This is the dedicated sending thread
@@ -99,7 +100,7 @@ int main()
 				sendThread.join();
 			}
 
-			coyoteBLEBackend.Disconnect();
+			coyoteBLEBackend.DisconnectPulseUnit();
 			coyoteBLEBackend.StopScan();
 
 			// VIIPER

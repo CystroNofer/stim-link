@@ -20,23 +20,26 @@ project "StimLink"
         "src/**.cpp",
 
         -- ImGui
-        "external/ImGui/imgui.cpp",
-        "external/ImGui/imgui_draw.cpp",
-        "external/ImGui/imgui_tables.cpp",
-        "external/ImGui/imgui_widgets.cpp",
+        "external/ImGui/**.cpp",
 
-        "external/ImGui/backends/imgui_impl_win32.cpp",
-        "external/ImGui/backends/imgui_impl_dx11.cpp"
+        
+        -- ImPlot
+        "external/ImPlot/**.cpp",
     }
 
     includedirs
     {
         "src",
 
+        -- VIIPER
         "external/libVIIPER/include",
 
+        -- ImGui
         "external/imgui",
-        "external/imgui/backends"
+        "external/imgui/backends",
+
+        -- ImPlot
+        "external/implot"
     }
 
     libdirs

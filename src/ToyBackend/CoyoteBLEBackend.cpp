@@ -8,40 +8,36 @@
 #include <string>
 #include <unordered_map>
 
+// ==================== UUIDs ====================
+// All the latest versions of DGLab devices
+// Uses the same GATT layout
+// PawPrint does not support battery services
+inline const winrt::guid ServiceUUID =
+Bluetooth::BluetoothUuidHelper::FromShortId(0x180c);
 
-constexpr winrt::guid CoyoteServiceUuid{
-	0x0000180c,
-	0x0000,
-	0x1000,
-	{ 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }
-};
+inline const winrt::guid WriteUUID =
+Bluetooth::BluetoothUuidHelper::FromShortId(0x150a);
 
-constexpr winrt::guid CoyoteWriteUuid{
-	0x0000150a,
-	0x0000,
-	0x1000,
-	{ 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }
-};
+inline const winrt::guid NotifyUUID =
+Bluetooth::BluetoothUuidHelper::FromShortId(0x150b);
 
-constexpr winrt::guid CoyoteNotifyUuid{
-	0x0000150b,
-	0x0000,
-	0x1000,
-	{ 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }
-};
+inline const winrt::guid BatteryServiceUUID =
+Bluetooth::BluetoothUuidHelper::FromShortId(0x180a);
 
-constexpr winrt::guid BatteryServiceUuid{
-	0x0000180a,
-	0x0000,
-	0x1000,
-	{ 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }
-};
+inline const winrt::guid BatteryReadNotifyUUID =
+Bluetooth::BluetoothUuidHelper::FromShortId(0x1500);
 
-constexpr winrt::guid BatteryCharacteristicUuid{
-	0x00001500,
-	0x0000,
-	0x1000,
-	{ 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb }
+constexpr std::array<std::uint8_t, 17> PawPrintConfigPacket{
+	0x50, // Expected header
+	0x01, // Yellow
+	// (For some reason, 0x07 (white) causes the device to disconnect)
+	0xD0, // Mode: Report
+
+	// Placeholder/Setting bytes * 14
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00
 };
 
 enum class StrengthMode : std::uint8_t
@@ -73,10 +69,10 @@ std::array<std::uint8_t, 20> BuildB0Packet(
 
 	packet[2] = static_cast<std::uint8_t>(
 		std::clamp(waveformSamples.maxStrengthL, 0.0f, MAX_STRENGTH)
-	);
+		);
 	packet[3] = static_cast<std::uint8_t>(
 		std::clamp(waveformSamples.maxStrengthR, 0.0f, MAX_STRENGTH)
-	);
+		);
 
 	std::copy(
 		frequencyA.begin(),
@@ -131,9 +127,6 @@ std::array<std::uint8_t, 20> BuildB0Packet(
 CoyoteBLEBackend::CoyoteBLEBackend() {
 	//winrt::init_apartment();
 	winrt::init_apartment(winrt::apartment_type::multi_threaded);
-
-	StartScan();
-	std::cout << "[BLE][INFO] Scanning...\n";
 }
 
 void CoyoteBLEBackend::StartScan()
@@ -143,8 +136,6 @@ void CoyoteBLEBackend::StartScan()
 	using namespace winrt::Windows::Devices::Bluetooth::Advertisement;
 
 	m_AdvertisementWatcher = BluetoothLEAdvertisementWatcher{};
-
-	// Receive advertisements as they arrive.
 	m_AdvertisementWatcher.ScanningMode(
 		BluetoothLEScanningMode::Active
 	);
@@ -154,21 +145,37 @@ void CoyoteBLEBackend::StartScan()
 			const BluetoothLEAdvertisementWatcher&,
 			const BluetoothLEAdvertisementReceivedEventArgs& args)
 		{
-			const BluetoothLEAdvertisement advertisement = args.Advertisement();
-			const winrt::hstring localName = advertisement.LocalName();
+			const winrt::hstring localName = 
+				args.Advertisement().LocalName();
 
 			if (localName.empty())
 				return;
 
-			const std::string name = winrt::to_string(localName);
+			std::string name = winrt::to_string(localName);
+			BLEDeviceType deviceType;
 
-			// Coyote V3 pulse host.
-			if (name != "47L121000")
+			if (name == "47L121000")
+			{
+				name = "Coyote Pulse Unit V3";
+				deviceType = BLEDeviceType::CoyoteV3;
+			}
+			else if (name == "47L120300")
+			{
+				name = "PawPrint V1.1";
+				deviceType = BLEDeviceType::PawPrintV1_1;
+			}
+			// PawPrint V1.0 advertises as 47L120100
+			// But requires a firmware update via the app
+			else
+			{
+				//deviceType = BLEDeviceType::Unknown;
 				return;
+			}
 
 			std::scoped_lock lock(m_Mutex);
 			BLEAdvertisementInfo& ad = m_Advertisements[args.BluetoothAddress()];
 			ad.name = name;
+			ad.type = deviceType;
 			ad.rssi = args.RawSignalStrengthInDBm();
 			ad.lastSeen = std::chrono::steady_clock::now();
 		}
@@ -212,6 +219,7 @@ std::unordered_map<std::uint64_t, BLEAdvertisementInfo> CoyoteBLEBackend::GetAdv
 		m_Advertisements,
 		[](const std::pair<const std::uint64_t, BLEAdvertisementInfo>& p) {
 			return
+				p.second.connectionState == BLEConnectionState::Connected ||
 				std::chrono::steady_clock::now() - p.second.lastSeen >
 				std::chrono::seconds(5);
 		}
@@ -222,18 +230,20 @@ std::unordered_map<std::uint64_t, BLEAdvertisementInfo> CoyoteBLEBackend::GetAdv
 
 IAsyncOperation<bool> CoyoteBLEBackend::ConnectAsync(std::uint64_t address)
 {
+	BLEDeviceType deviceType;
 	{
 		std::scoped_lock lock(m_Mutex);
 		if (!m_Advertisements.contains(address))
 			co_return false;
 
+		deviceType = m_Advertisements[address].type;
+		if (deviceType == BLEDeviceType::Unknown)
+			co_return false;
 		m_Advertisements[address].connectionState = BLEConnectionState::Connecting;
 	}
 
 	using namespace winrt::Windows::Devices::Bluetooth;
 	using namespace winrt::Windows::Devices::Bluetooth::GenericAttributeProfile;
-
-	Disconnect();
 
 	try
 	{
@@ -246,37 +256,11 @@ IAsyncOperation<bool> CoyoteBLEBackend::ConnectAsync(std::uint64_t address)
 			co_return false;
 		}
 
-		//// ==================== Pairing ====================
-		//using namespace winrt::Windows::Devices::Enumeration;
-		//const DeviceInformationPairing pairing =
-		//	device.DeviceInformation().Pairing();
-
-		//if (!pairing.IsPaired())
-		//{
-		//	const DevicePairingResult result =
-		//		co_await pairing.PairAsync();
-
-		//	switch (result.Status())
-		//	{
-		//	case DevicePairingResultStatus::Paired:
-		//	case DevicePairingResultStatus::AlreadyPaired:
-		//		break;
-
-		//	default:
-		//		std::cerr
-		//			<< "Pairing failed: "
-		//			<< static_cast<int>(result.Status())
-		//			<< '\n';
-
-		//		co_return false;
-		//	}
-		//}
-
 		// ==================== Services & Characteristics ====================
 		// ========== Command Services ==========
 		const GattDeviceServicesResult commandServiceResult =
 			co_await device.GetGattServicesForUuidAsync(
-				CoyoteServiceUuid,
+				ServiceUUID,
 				BluetoothCacheMode::Uncached
 			);
 
@@ -302,7 +286,7 @@ IAsyncOperation<bool> CoyoteBLEBackend::ConnectAsync(std::uint64_t address)
 		// ========== Write Characteristic ==========
 		const GattCharacteristicsResult commandWriteResult =
 			co_await commandService.GetCharacteristicsForUuidAsync(
-				CoyoteWriteUuid,
+				WriteUUID,
 				BluetoothCacheMode::Uncached
 			);
 
@@ -318,7 +302,7 @@ IAsyncOperation<bool> CoyoteBLEBackend::ConnectAsync(std::uint64_t address)
 		// ========== Notify Characteristic ==========
 		const GattCharacteristicsResult commandNotifyResult =
 			co_await commandService.GetCharacteristicsForUuidAsync(
-				CoyoteNotifyUuid,
+				NotifyUUID,
 				BluetoothCacheMode::Uncached
 			);
 
@@ -333,59 +317,135 @@ IAsyncOperation<bool> CoyoteBLEBackend::ConnectAsync(std::uint64_t address)
 
 		GattCharacteristic commandNotifyCharacteristic =
 			commandNotifyResult.Characteristics().GetAt(0);
-		winrt::event_token cmdNotifyChangedToken =
-			commandNotifyCharacteristic.ValueChanged(
-				[this](
-					const auto&,
-					const GattValueChangedEventArgs& args)
-				{
-					using namespace winrt::Windows::Storage::Streams;
-
-					DataReader reader =
-						DataReader::FromBuffer(args.CharacteristicValue());
-
-					const std::uint32_t byteCount =
-						reader.UnconsumedBufferLength();
-
-					if (byteCount < 1)
-						return;
-
-					std::vector<std::uint8_t> bytes(byteCount);
-
-					reader.ReadBytes(bytes);
-
-#ifdef TC_DEBUG
-					//std::cerr
-					//	<< "[BLE][INFO] 0xB1:"
-					//	<< " sequence=" << static_cast<int>(bytes[1])
-					//	<< " A=" << static_cast<int>(bytes[2])
-					//	<< " B=" << static_cast<int>(bytes[3])
-					//	<< '\r';
-#endif // TC_DEBUG
-
-					switch (bytes[0])
+		winrt::event_token cmdNotifyChangedToken{};
+		switch (deviceType)
+		{
+		case BLEDeviceType::CoyoteV3:
+			cmdNotifyChangedToken =
+				commandNotifyCharacteristic.ValueChanged(
+					[this](
+						const auto&,
+						const GattValueChangedEventArgs& args
+						)
 					{
-					case 0xB1:
-						// This currently does NOT work as intended
-						// The 0-sequenced notification is heavily delayed
+						using namespace winrt::Windows::Storage::Streams;
 
-						//if (bytes.size() == 4 && bytes[1] == 0)
-						//{
-						//	SetSafety(true);
-						//}
-						break;
+						DataReader reader =
+							DataReader::FromBuffer(args.CharacteristicValue());
 
-					default:
-						std::cerr
-							<< "[BLE][WARNING] Unknown notification: 0x"
-							<< std::hex
-							<< static_cast<int>(bytes[0])
-							<< std::dec
-							<< '\n';
-						break;
+						const std::uint32_t byteCount =
+							reader.UnconsumedBufferLength();
+
+						if (byteCount < 1)
+							return;
+
+						std::vector<std::uint8_t> bytes(byteCount);
+
+						reader.ReadBytes(bytes);
+
+						switch (bytes[0])
+						{
+						case 0xB1:
+							// This currently does NOT work as intended
+							// The 0-sequenced notification is heavily delayed
+
+							//if (bytes.size() == 4 && bytes[1] == 0)
+							//{
+							//	SetSafety(true);
+							//}
+							break;
+
+						default:
+							std::cerr
+								<< "[BLE][WARNING] Unknown notification: 0x"
+								<< std::hex
+								<< static_cast<int>(bytes[0])
+								<< std::dec
+								<< '\n';
+							break;
+						}
 					}
-				}
-			);
+				);
+			break;
+		case BLEDeviceType::PawPrintV1_1:
+			cmdNotifyChangedToken =
+				commandNotifyCharacteristic.ValueChanged(
+					[this](
+						const auto&,
+						const GattValueChangedEventArgs& args
+						)
+					{
+						using namespace winrt::Windows::Storage::Streams;
+
+						DataReader reader =
+							DataReader::FromBuffer(args.CharacteristicValue());
+
+						const std::uint32_t byteCount =
+							reader.UnconsumedBufferLength();
+
+						if (byteCount < 1)
+							return;
+
+						std::vector<std::uint8_t> bytes(byteCount);
+
+						reader.ReadBytes(bytes);
+
+						switch (bytes[0])
+						{
+						case 0x51:
+							// After 0x50 configuration
+							// Or when battery changed
+							break;
+						case 0x5A:
+							// Trigger fired
+							break;
+						case 0x5B:
+							// Trigger cancelled
+							break;
+						case 0x5C:
+							// Trigger parameter changed
+							break;
+						case 0xD0:
+						{
+							// The x y and z describes the gravity direction w.r.t the
+							// Left-handed XYZ axes relative to the device
+							// X+: Right when facing the logo
+							// Y+: The belt clip on the shorter edge
+							// Z+: Normal of the chargeport & power panel
+							float gx = static_cast<int8_t>(bytes[5]) / 64.0f;
+							float gy = static_cast<int8_t>(bytes[6]) / 64.0f;
+							float gz = static_cast<int8_t>(bytes[7]) / 64.0f;
+
+							std::string msg = std::format(
+								"[BLE][INFO] D0: Light {}, {}, Acc {}, X {:.2f}, Y {:.2f}, Z {:.2f}\n",
+								(bytes[1] == 0x00 ? "Off" : "On"),
+								(bytes[3] == 0x00 ? "Unpressed" : "Pressed"),
+								bytes[4],
+								gx,
+								gy,
+								gz
+							);
+							std::cout << msg;
+							break;
+						}
+						default:
+							std::cerr
+								<< "[BLE][WARNING] Unknown notification: 0x"
+								<< std::hex
+								<< static_cast<int>(bytes[0])
+								<< std::dec
+								<< '\n';
+							break;
+						}
+					}
+				);
+			break;
+		default:
+			break;
+		}
+
+		const GattCharacteristic commandWriteCharacteristic =
+			commandWriteResult.Characteristics().GetAt(0);
 
 		const GattCommunicationStatus status =
 			co_await commandNotifyCharacteristic
@@ -403,103 +463,57 @@ IAsyncOperation<bool> CoyoteBLEBackend::ConnectAsync(std::uint64_t address)
 			co_return false;
 		}
 
-		//// ========== Battery Services ==========
-		//const GattDeviceServicesResult batteryServiceResult =
-		//	co_await device.GetGattServicesForUuidAsync(
-		//		BatteryServiceUuid,
-		//		BluetoothCacheMode::Uncached
-		//	);
+		if (deviceType == BLEDeviceType::PawPrintV1_1)
+		{
+			DataWriter configWriter;
+			configWriter.WriteBytes(PawPrintConfigPacket);
 
-		//if (batteryServiceResult.Status() != GattCommunicationStatus::Success)
-		//{
-		//	std::scoped_lock lock(m_Mutex);
-		//	m_Advertisements[address].connectionState = BLEConnectionState::Failed;
-		//	co_return false;
-		//}
+			const GattWriteResult configResult =
+				co_await commandWriteCharacteristic.WriteValueWithResultAsync(
+					configWriter.DetachBuffer(),
+					GattWriteOption::WriteWithoutResponse
+				);
 
-		//const Collections::IVectorView<GattDeviceService> batteryServices =
-		//	batteryServiceResult.Services();
+			if (configResult.Status() != GattCommunicationStatus::Success)
+			{
+				commandNotifyCharacteristic.ValueChanged(cmdNotifyChangedToken);
 
-		//if (batteryServices.Size() == 0)
-		//{
-		//	std::scoped_lock lock(m_Mutex);
-		//	m_Advertisements[address].connectionState = BLEConnectionState::Failed;
-		//	co_return false;
-		//}
+				std::scoped_lock lock(m_Mutex);
+				m_Advertisements[address].connectionState = BLEConnectionState::Failed;
+				co_return false;
+			}
+		}
 
-		//GattDeviceService batteryService = batteryServices.GetAt(0);
-
-		//// ========== Read/Notify Characteristic ==========
-		//const GattCharacteristicsResult batteryReadResult =
-		//	co_await batteryService.GetCharacteristicsForUuidAsync(
-		//		BatteryCharacteristicUuid,
-		//		BluetoothCacheMode::Uncached
-		//	);
-
-		//if (
-		//	batteryReadResult.Status() != GattCommunicationStatus::Success ||
-		//	batteryReadResult.Characteristics().Size() == 0)
-		//{
-		//	std::scoped_lock lock(m_Mutex);
-		//	m_Advertisements[address].connectionState = BLEConnectionState::Failed;
-		//	co_return false;
-		//}
-
-		//GattCharacteristic batteryReadCharacteristic =
-		//	batteryReadResult.Characteristics().GetAt(0);
-		//winrt::event_token batteryChangedToken =
-		//	batteryReadCharacteristic.ValueChanged(
-		//		[this](
-		//			const auto&,
-		//			const GattValueChangedEventArgs& args)
-		//		{
-		//			using namespace winrt::Windows::Storage::Streams;
-
-		//			DataReader reader =
-		//				DataReader::FromBuffer(args.CharacteristicValue());
-
-		//			if (reader.UnconsumedBufferLength() < 1)
-		//				return;
-
-		//			m_BatteryPercentage.store(
-		//				static_cast<int>(reader.ReadByte())
-		//			);
-		//		}
-		//	);
-
-		//const GattCommunicationStatus status =
-		//	co_await batteryReadCharacteristic
-		//	.WriteClientCharacteristicConfigurationDescriptorAsync(
-		//		GattClientCharacteristicConfigurationDescriptorValue::Notify
-		//	);
-
-		//if (status != GattCommunicationStatus::Success)
-		//{
-		//	batteryReadCharacteristic.ValueChanged(
-		//		batteryChangedToken
-		//	);
-
-		//	// For now, allow connection to finish without battery callback
-		//	//co_return false;
-		//}
+		DisconnectPulseUnit();
 
 		std::scoped_lock lock(m_Mutex);
 		// Store these only after every discovery step succeeds.
-		m_Device = device;
+		switch (deviceType)
+		{
+		case BLEDeviceType::CoyoteV3:
+			m_PulseUnit.device = device;
 
-		m_CommandService = commandService;
-		m_CommandWriteCharacteristic =
-			commandWriteResult.Characteristics().GetAt(0);
-		m_CommandNotifyCharacteristic = commandNotifyCharacteristic;
-		m_CommandNotifyToken = cmdNotifyChangedToken;
+			m_PulseUnit.commandService = commandService;
+			m_PulseUnit.writeCharacteristic = commandWriteCharacteristic;
+			m_PulseUnit.notifyCharacteristic = commandNotifyCharacteristic;
+			m_PulseUnit.notifyToken = cmdNotifyChangedToken;
 
-		//m_BatteryService = batteryService;
-		//m_BatteryReadCharacteristic = batteryReadCharacteristic;
-		//m_BatteryChangedToken = batteryChangedToken;
+			m_Advertisements[address].connectionState = BLEConnectionState::Connected;
+			std::cerr << "[BLE][WHY??] " << address << "\n";
+			break;
+		case BLEDeviceType::PawPrintV1_1:
+			m_PawPrint.device = device;
 
-		m_Advertisements[address].connectionState = BLEConnectionState::Connected;
+			m_PawPrint.commandService = commandService;
+			m_PawPrint.writeCharacteristic = commandWriteCharacteristic;
+			m_PawPrint.notifyCharacteristic = commandNotifyCharacteristic;
+			m_PawPrint.notifyToken = cmdNotifyChangedToken;
 
-		StopScan();
+			m_Advertisements[address].connectionState = BLEConnectionState::Connected;
+			break;
+		default:
+			break;
+		}
 
 		co_return true;
 	}
@@ -510,57 +524,63 @@ IAsyncOperation<bool> CoyoteBLEBackend::ConnectAsync(std::uint64_t address)
 			<< winrt::to_string(error.message())
 			<< '\n';
 
-		Disconnect();
+		DisconnectPulseUnit();
 		m_Advertisements[address].connectionState = BLEConnectionState::Failed;
 		co_return false;
 	}
 }
 
-void CoyoteBLEBackend::Disconnect()
+void CoyoteBLEBackend::DisconnectPulseUnit()
 {
 	std::scoped_lock lock(m_Mutex);
 
-	// ==================== Tokens ====================
-	if (m_CommandNotifyToken)
+	if (!m_PulseUnit.device)
+		return;
+
+	// ========== Tokens ==========
+	if (m_PulseUnit.notifyToken)
 	{
-		m_CommandNotifyCharacteristic.ValueChanged(
-			m_CommandNotifyToken
+		m_PulseUnit.notifyCharacteristic.ValueChanged(
+			m_PulseUnit.notifyToken
 		);
 	}
-	m_CommandNotifyToken = {};
-
-	// ==================== Characteristics ====================
-	m_CommandNotifyCharacteristic = nullptr;
-	m_CommandWriteCharacteristic = nullptr;
-	//m_BatteryReadCharacteristic = nullptr;
-
-	// ==================== Services ====================
-	if (m_CommandService)
+	// ========== Services ==========
+	if (m_PulseUnit.commandService)
 	{
-		m_CommandService.Close();
-		m_CommandService = nullptr;
+		m_PulseUnit.commandService.Close();
 	}
-
-	//if (m_BatteryService)
+	//if (m_PulseUnit.batteryService)
 	//{
-	//	m_BatteryService.Close();
-	//	m_BatteryService = nullptr;
+	//	m_PulseUnit.batteryService.Close();
 	//}
-
-	// ==================== Device ====================
-	if (m_Device)
+	// ========== Device ==========
+	if (m_PulseUnit.device)
 	{
-		m_Device.Close();
-		m_Device = nullptr;
+		m_PulseUnit.device.Close();
+		m_PulseUnit.device = nullptr;
 	}
 }
 
-bool CoyoteBLEBackend::IsConnected()
+bool CoyoteBLEBackend::IsPulseUnitConnected()
 {
 	std::scoped_lock lock(m_Mutex);
 
-	return m_Device &&
-		m_Device.ConnectionStatus() == Bluetooth::BluetoothConnectionStatus::Connected;
+	return m_PulseUnit.device &&
+		m_PulseUnit.device.ConnectionStatus() ==
+		Bluetooth::BluetoothConnectionStatus::Connected;
+}
+
+int CoyoteBLEBackend::IsPawPrintConnected()
+{
+	std::scoped_lock lock(m_Mutex);
+
+	if (m_PawPrint.device &&
+		m_PawPrint.device.ConnectionStatus() ==
+		Bluetooth::BluetoothConnectionStatus::Connected)
+	{
+		return 1;
+	}
+	return 0;
 }
 
 IAsyncOperation<bool> CoyoteBLEBackend::WriteCommandAsync(WaveformSample<4> waveformSamples)
@@ -573,7 +593,7 @@ IAsyncOperation<bool> CoyoteBLEBackend::WriteCommandAsync(WaveformSample<4> wave
 	GattCharacteristic writeCharacteristic{ nullptr };
 	{
 		std::scoped_lock lock(m_Mutex);
-		writeCharacteristic = m_CommandWriteCharacteristic;
+		writeCharacteristic = m_PulseUnit.writeCharacteristic;
 	}
 
 	if (!writeCharacteristic)

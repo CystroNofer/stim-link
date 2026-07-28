@@ -10,6 +10,9 @@
     <Filter Include="external\ImGui\backends">
       <UniqueIdentifier>{BC62FDD5-289A-456D-31A4-A9909D5A6C66}</UniqueIdentifier>
     </Filter>
+    <Filter Include="external\ImPlot">
+      <UniqueIdentifier>{EC405ED4-58CC-CB98-61DD-4E8DCDE72799}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src">
       <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
     </Filter>
@@ -58,6 +61,12 @@
     </ClCompile>
     <ClCompile Include="external\ImGui\imgui_widgets.cpp">
       <Filter>external\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="external\ImPlot\implot.cpp">
+      <Filter>external\ImPlot</Filter>
+    </ClCompile>
+    <ClCompile Include="external\ImPlot\implot_items.cpp">
+      <Filter>external\ImPlot</Filter>
     </ClCompile>
     <ClCompile Include="src\ToyBackend\CoyoteBLEBackend.cpp">
       <Filter>src\ToyBackend</Filter>

@@ -33,6 +33,13 @@ struct WaveformSample
     std::array<float, SampleCount> waveformStrengthR{};
 };
 
+enum class BLEDeviceType
+{
+    Unknown,
+    CoyoteV3,
+    PawPrintV1_1
+};
+
 enum class BLEConnectionState
 {
     Disconnected,
@@ -44,6 +51,7 @@ enum class BLEConnectionState
 struct BLEAdvertisementInfo
 {
     std::string name;
+    BLEDeviceType type;
     // Address is used as index
     std::int16_t rssi{};
     TimeStamp lastSeen;

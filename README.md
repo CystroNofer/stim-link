@@ -88,17 +88,16 @@ premake5  vs2022
 
 2. Find nearby Bluetooth LE devices in the side panel.
 
-4. Select any device from the list
-	> The program currently only shows Coyotes nearby.
-	> Coyotes usually do not have a human-readable name
+3. Select any device from the list
+	> The program currently only shows Coyotes and PawPrints nearby.
 
-5. Connect to the device.
+4. Connect to the device.
 
-6. Configure channel strength.
+5. Configure channel strength.
 
-7. Start your game that supports controller vibration.
+6. Start your game that supports controller vibration.
 
-8. Use the emergency stop control whenever necessary.
+7. Use the emergency stop control whenever necessary.
 
   
 

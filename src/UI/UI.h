@@ -6,9 +6,13 @@
 #include <d3d11.h>
 #include <tchar.h>
 
+#include <iostream>
+
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
+
+#include "implot.h"
 
 #include "ToyBackend/CoyoteBLEBackend.h"
 #include "VirtualController/SignalBuffer.h"
@@ -57,6 +61,5 @@ private:
 	static HWND m_Window;
 
 	static bool m_VirtualControllerConnected;
-	static bool m_ToyConnected;
 };
 

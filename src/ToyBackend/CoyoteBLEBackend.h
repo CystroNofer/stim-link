@@ -10,12 +10,32 @@
 
 #include <unordered_map>
 #include <mutex>
+#include <atomic>
 
 #include "core.h"
 
 using namespace winrt::Windows::Devices;
 using namespace winrt::Windows::Foundation;
 using namespace winrt::Windows::Storage::Streams;
+
+struct BLEConnection {
+public:
+	Bluetooth::BluetoothLEDevice device{ nullptr };
+
+	Bluetooth::GenericAttributeProfile::GattDeviceService
+		commandService{ nullptr };
+	//batteryService{ nullptr };
+
+	Bluetooth::GenericAttributeProfile::GattCharacteristic
+		writeCharacteristic{ nullptr },
+		notifyCharacteristic{ nullptr };
+	//batteryReadCharacteristic{ nullptr };
+
+	winrt::event_token
+		//batteryChangedToken{},
+		//writeToken{},  // Write has no callback
+		notifyToken{};
+};
 
 class CoyoteBLEBackend
 {
@@ -30,10 +50,12 @@ public:
 
 	IAsyncOperation<bool> ConnectAsync(std::uint64_t address);
 
-	void Disconnect();
+	void DisconnectPulseUnit();
 
 	[[nodiscard]]
-	bool IsConnected();
+	bool IsPulseUnitConnected();
+	[[nodiscard]]
+	int IsPawPrintConnected();
 
 	IAsyncOperation<bool> WriteCommandAsync(WaveformSample<4> waveformSamples);
 
@@ -46,21 +68,10 @@ private:
 
 	Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher m_AdvertisementWatcher{ nullptr };
 	winrt::event_token
-		m_AdReceivedToken{}, m_AdStoppedToken{},
-		//m_BatteryChangedToken{},
-		//m_CommandWriteToken{},
-		m_CommandNotifyToken{};
+		m_AdReceivedToken{}, m_AdStoppedToken{};
 
-	Bluetooth::BluetoothLEDevice m_Device{ nullptr };
-
-	Bluetooth::GenericAttributeProfile::GattDeviceService
-		m_CommandService{ nullptr };
-		//m_BatteryService{ nullptr };
-
-	Bluetooth::GenericAttributeProfile::GattCharacteristic
-		m_CommandWriteCharacteristic{ nullptr },
-		m_CommandNotifyCharacteristic{ nullptr };
-		//m_BatteryReadCharacteristic{ nullptr };
+	BLEConnection m_PulseUnit{};
+	BLEConnection m_PawPrint{};
 
 	std::unordered_map<std::uint64_t, BLEAdvertisementInfo> m_Advertisements{};
 
