@@ -90,6 +90,10 @@ premake5  vs2022
 
 3. Select any device from the list
 	> The program currently only shows Coyotes and PawPrints nearby.
+	>
+	> If your Coyote does not show up among nearby devices, try dial (not press) down and hold both dials.
+	>
+	> PawPrints can only be discovered when pressed down (shoulder lights blinking), and need to be held down while connecting.
 
 4. Connect to the device.
 
