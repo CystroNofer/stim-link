@@ -7,21 +7,30 @@
 #include <vector>
 #include <string>
 
+// Input mode
+enum class InputMode { VirtualController, SystemAudio };
+
+// Time
 using TimeStamp = std::chrono::steady_clock::time_point;
 using TimeDuration = std::chrono::steady_clock::duration;
 
 // Based on Coyote
+constexpr TimeDuration AUDIO_BLOCK_DURATION = std::chrono::milliseconds(25);
 constexpr TimeDuration OUTPUT_INTERVAL = std::chrono::milliseconds(100);
 constexpr float MAX_STRENGTH = 200.0f;
 
-struct RumbleSignal
+// Signal & Buffer
+constexpr size_t BUFFER_SIZE = 100;
+constexpr size_t BUFFER_MAX_SIZE = 150;
+
+struct Signal
 {
     TimeStamp time;
     float left = 0.0f;
     float right = 0.0f;
 };
 
-using SignalBufferSnapshot = std::shared_ptr<const std::vector<RumbleSignal>>;
+using SignalBufferSnapshot = std::shared_ptr<const std::vector<Signal>>;
 
 template <std::size_t SampleCount>
 struct WaveformSample

@@ -15,7 +15,7 @@
 #include "implot.h"
 
 #include "ToyBackend/CoyoteBLEBackend.h"
-#include "VirtualController/SignalBuffer.h"
+#include "SignalBuffer.h"
 
 void CreateRenderTarget();
 
@@ -37,29 +37,18 @@ class UI
 public:
 	static bool Init();
 
-	static bool Update(
-		CoyoteBLEBackend& toyBackend,
-		SignalBuffer& signalBuffer,
-		TimeDuration historySpan = std::chrono::milliseconds(2000)
-	);
+	static bool BeginFrame();
+	static void EndFrame();
+
+	static void TextCentered(const char* textContent, bool yCentered = false);
+	static void TextRAligned(const char* textContent);
+	static bool ButtonRAligned(const char* label, float width);
 
 	static void Shutdown();
-
-	static inline void UpdateVControllerState(bool connected)
-	{
-		m_VirtualControllerConnected = connected;
-	}
-
-	//static inline void UpdateToyState(bool connected)
-	//{
-	//	m_ToyConnected = connected;
-	//}
 
 private:
 	static HINSTANCE m_HInstance;
 	static const wchar_t* m_WindowClassName;
 	static HWND m_Window;
-
-	static bool m_VirtualControllerConnected;
 };
 

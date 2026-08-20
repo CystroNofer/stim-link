@@ -499,7 +499,6 @@ IAsyncOperation<bool> CoyoteBLEBackend::ConnectAsync(std::uint64_t address)
 			m_PulseUnit.notifyToken = cmdNotifyChangedToken;
 
 			m_Advertisements[address].connectionState = BLEConnectionState::Connected;
-			std::cerr << "[BLE][WHY??] " << address << "\n";
 			break;
 		case BLEDeviceType::PawPrintV1_1:
 			m_PawPrint.device = device;

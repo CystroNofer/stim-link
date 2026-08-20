@@ -33,7 +33,7 @@
     <ClInclude Include="src\UI\UI.h">
       <Filter>src\UI</Filter>
     </ClInclude>
-    <ClInclude Include="src\VirtualController\SignalBuffer.h">
+    <ClInclude Include="src\SignalBuffer.h">
       <Filter>src\VirtualController</Filter>
     </ClInclude>
     <ClInclude Include="src\VirtualController\VIIPERBackend.h">
@@ -42,6 +42,7 @@
     <ClInclude Include="src\core.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="src\Audio\WASAPICapture.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="external\ImGui\backends\imgui_impl_dx11.cpp">
@@ -74,7 +75,7 @@
     <ClCompile Include="src\UI\UI.cpp">
       <Filter>src\UI</Filter>
     </ClCompile>
-    <ClCompile Include="src\VirtualController\SignalBuffer.cpp">
+    <ClCompile Include="src\SignalBuffer.cpp">
       <Filter>src\VirtualController</Filter>
     </ClCompile>
     <ClCompile Include="src\VirtualController\VIIPERBackend.cpp">
@@ -83,5 +84,6 @@
     <ClCompile Include="src\main.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Audio\WASAPICapture.cpp" />
   </ItemGroup>
 </Project>

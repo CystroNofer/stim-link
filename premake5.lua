@@ -57,7 +57,12 @@ project "StimLink"
         -- ImGui
         "d3d11",
         "dxgi",
-        "d3dcompiler"
+        "d3dcompiler",
+
+        -- Windows system libraries required for WASAPI
+        "ole32",
+        "avrt",
+        "winmm"
     }
 
     postbuildcommands

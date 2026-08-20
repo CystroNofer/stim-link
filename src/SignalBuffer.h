@@ -10,14 +10,14 @@ class SignalBuffer
 public:
     SignalBuffer();
 
-    void Push(std::uint8_t left, std::uint8_t right);
+    void Push(float left, float right);
 
     template <std::size_t nSamples>
     WaveformSample<nSamples> Sample(TimeDuration d)
     {
         // The shared pointer guarantees the vector remains alive
         const SignalBufferSnapshot snapshot = m_Snapshot.load();
-        const std::vector<RumbleSignal>& signals = *snapshot;
+        const std::vector<Signal>& signals = *snapshot;
 
         if (nSamples == 0 || signals.empty()) {
             return WaveformSample<nSamples>{};
@@ -26,7 +26,7 @@ public:
 		const float strengthAmp = m_StrengthAmp.load();
 
         if (nSamples == 1) {
-            RumbleSignal lastSignal = signals.back();
+            Signal lastSignal = signals.back();
             return WaveformSample<nSamples>{
                 .maxStrengthL = lastSignal.left,
                 .maxStrengthR = lastSignal.right,
@@ -35,24 +35,30 @@ public:
             };
         }
 
-        TimeStamp sampleTime = std::chrono::steady_clock::now();
-        TimeDuration sampleInterval = d / (nSamples - 1);
+        TimeDuration sampleInterval = d / nSamples;
+        TimeStamp sampleTimeStart = std::chrono::steady_clock::now() - sampleInterval;
         size_t signalIndex = signals.size() - 1;
-        WaveformSample<nSamples> res{
-            .waveformStrengthL = std::array<float, nSamples>{},
-            .waveformStrengthR = std::array<float, nSamples>{}
-        };
-        for (size_t i = 1; i <= nSamples; i++) {
+        size_t resIndex = nSamples - 1;
+        WaveformSample<nSamples> res;
+		while (signalIndex > 0) {
+            if (signals[signalIndex].time < sampleTimeStart) {
+                if (resIndex < 1) {
+                    break;
+                }
+                resIndex--;
+                sampleTimeStart -= sampleInterval;
+            }
+
             res.maxStrengthL = max(res.maxStrengthL, signals[signalIndex].left);
             res.maxStrengthR = max(res.maxStrengthR, signals[signalIndex].right);
-            res.waveformStrengthL[nSamples - i] = signals[signalIndex].left;
-            res.waveformStrengthR[nSamples - i] = signals[signalIndex].right;
 
-            sampleTime += sampleInterval;
-            while (signalIndex > 0 && signals[signalIndex].time > sampleTime) {
-                signalIndex--;
-            }
-        }
+            res.waveformStrengthL[resIndex] =
+                max(res.waveformStrengthL[resIndex], signals[signalIndex].left);
+            res.waveformStrengthR[resIndex] =
+                max(res.waveformStrengthR[resIndex], signals[signalIndex].right);
+
+			signalIndex--;
+		}
 
         if (res.maxStrengthL > 0.0f) {
             for (float& s : res.waveformStrengthL) {
@@ -87,10 +93,8 @@ public:
 private:
     mutable std::mutex m_Mutex;
 
-    std::vector<RumbleSignal> m_Buffer;
+    std::vector<Signal> m_Buffer;
     std::atomic<SignalBufferSnapshot> m_Snapshot;
 
 	std::atomic<float> m_StrengthAmp{ 1.0f };
-
-    //TimeStamp m_LastSwapTime;
 };

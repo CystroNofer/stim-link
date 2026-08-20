@@ -114,9 +114,10 @@ copy /B /Y "external\USBip\resources.dll" "bin\Release\x86_64\StimLink\external\
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Audio\WASAPICapture.h" />
     <ClInclude Include="src\ToyBackend\CoyoteBLEBackend.h" />
     <ClInclude Include="src\UI\UI.h" />
-    <ClInclude Include="src\VirtualController\SignalBuffer.h" />
+    <ClInclude Include="src\SignalBuffer.h" />
     <ClInclude Include="src\VirtualController\VIIPERBackend.h" />
     <ClInclude Include="src\core.h" />
   </ItemGroup>
@@ -129,9 +130,10 @@ copy /B /Y "external\USBip\resources.dll" "bin\Release\x86_64\StimLink\external\
     <ClCompile Include="external\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="external\ImPlot\implot.cpp" />
     <ClCompile Include="external\ImPlot\implot_items.cpp" />
+    <ClCompile Include="src\Audio\WASAPICapture.cpp" />
     <ClCompile Include="src\ToyBackend\CoyoteBLEBackend.cpp" />
     <ClCompile Include="src\UI\UI.cpp" />
-    <ClCompile Include="src\VirtualController\SignalBuffer.cpp" />
+    <ClCompile Include="src\SignalBuffer.cpp" />
     <ClCompile Include="src\VirtualController\VIIPERBackend.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
