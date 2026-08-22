@@ -8,78 +8,81 @@
 class SignalBuffer
 {
 public:
-    SignalBuffer();
+	SignalBuffer();
 
-    void Push(float left, float right);
+	void Push(float left, float right);
 
-    template <std::size_t nSamples>
-    WaveformSample<nSamples> Sample(TimeDuration d)
-    {
-        // The shared pointer guarantees the vector remains alive
-        const SignalBufferSnapshot snapshot = m_Snapshot.load();
-        const std::vector<Signal>& signals = *snapshot;
+	template <std::size_t nSamples>
+	WaveformSample<nSamples> Sample(TimeDuration d)
+	{
+		// The shared pointer guarantees the vector remains alive
+		const SignalBufferSnapshot snapshot = m_Snapshot.load();
+		const std::vector<Signal>& signals = *snapshot;
 
-        if (nSamples == 0 || signals.empty()) {
-            return WaveformSample<nSamples>{};
-        }
+		if (nSamples == 0 || signals.empty()) {
+			return WaveformSample<nSamples>{};
+		}
 
 		const float strengthAmp = m_StrengthAmp.load();
 
-        if (nSamples == 1) {
-            Signal lastSignal = signals.back();
-            return WaveformSample<nSamples>{
-                .maxStrengthL = lastSignal.left,
-                .maxStrengthR = lastSignal.right,
-                .waveformStrengthL = { 1.0f },
-                .waveformStrengthR = { 1.0f }
-            };
-        }
-
-        TimeDuration sampleInterval = d / nSamples;
-        TimeStamp sampleTimeStart = std::chrono::steady_clock::now() - sampleInterval;
-        size_t signalIndex = signals.size() - 1;
-        size_t resIndex = nSamples - 1;
-        WaveformSample<nSamples> res;
-		while (signalIndex > 0) {
-            if (signals[signalIndex].time < sampleTimeStart) {
-                if (resIndex < 1) {
-                    break;
-                }
-                resIndex--;
-                sampleTimeStart -= sampleInterval;
-            }
-
-            res.maxStrengthL = max(res.maxStrengthL, signals[signalIndex].left);
-            res.maxStrengthR = max(res.maxStrengthR, signals[signalIndex].right);
-
-            res.waveformStrengthL[resIndex] =
-                max(res.waveformStrengthL[resIndex], signals[signalIndex].left);
-            res.waveformStrengthR[resIndex] =
-                max(res.waveformStrengthR[resIndex], signals[signalIndex].right);
-
-			signalIndex--;
+		if (nSamples == 1) {
+			Signal lastSignal = signals.back();
+			return WaveformSample<nSamples>{
+				.maxStrengthL = lastSignal.left,
+					.maxStrengthR = lastSignal.right,
+					.waveformStrengthL = { 1.0f },
+					.waveformStrengthR = { 1.0f }
+			};
 		}
 
-        if (res.maxStrengthL > 0.0f) {
-            for (float& s : res.waveformStrengthL) {
-                s /= res.maxStrengthL;
-            }
-        }
-        if (res.maxStrengthR > 0.0f) {
-            for (float& s : res.waveformStrengthR) {
-                s /= res.maxStrengthR;
-            }
-        }
-        res.maxStrengthL *= strengthAmp;
-        res.maxStrengthR *= strengthAmp;
+		WaveformSample<nSamples> res;
 
-        return res;
-    }
+		TimeDuration sampleInterval = d / nSamples;
+		TimeStamp sampleTimeStart = std::chrono::steady_clock::now() - sampleInterval;
+		size_t signalIndex = signals.size() - 1;
+		size_t resIndex = nSamples - 1;
+		while (signalIndex >= 0) {
+			while (true) {
+				res.maxStrengthL = max(res.maxStrengthL, signals[signalIndex].left);
+				res.maxStrengthR = max(res.maxStrengthR, signals[signalIndex].right);
 
-    [[nodiscard]]
-    inline SignalBufferSnapshot GetSnapshot() const {
-        return m_Snapshot.load(std::memory_order_acquire);
-    }
+				res.waveformStrengthL[resIndex] =
+					max(res.waveformStrengthL[resIndex], signals[signalIndex].left);
+				res.waveformStrengthR[resIndex] =
+					max(res.waveformStrengthR[resIndex], signals[signalIndex].right);
+
+				if (signals[signalIndex].time < sampleTimeStart) {
+					break;
+				}
+
+				signalIndex--;
+			}
+
+			resIndex--;
+			if (resIndex < 1) break;
+			sampleTimeStart -= sampleInterval;
+		}
+
+		if (res.maxStrengthL > 0.0f) {
+			for (float& s : res.waveformStrengthL) {
+				s /= res.maxStrengthL;
+			}
+		}
+		if (res.maxStrengthR > 0.0f) {
+			for (float& s : res.waveformStrengthR) {
+				s /= res.maxStrengthR;
+			}
+		}
+		res.maxStrengthL *= strengthAmp;
+		res.maxStrengthR *= strengthAmp;
+
+		return res;
+	}
+
+	[[nodiscard]]
+	inline SignalBufferSnapshot GetSnapshot() const {
+		return m_Snapshot.load(std::memory_order_acquire);
+	}
 
 	[[nodiscard]]
 	inline float GetStrengthAmp() const {
@@ -90,11 +93,21 @@ public:
 		m_StrengthAmp.store(amp);
 	}
 
+	[[nodiscard]]
+	inline bool GetSaturation() const {
+		return m_Saturate.load();
+	}
+
+	inline void SetSaturation(bool saturate) {
+		m_Saturate.store(saturate);
+	}
+
 private:
-    mutable std::mutex m_Mutex;
+	mutable std::mutex m_Mutex;
 
-    std::vector<Signal> m_Buffer;
-    std::atomic<SignalBufferSnapshot> m_Snapshot;
+	std::vector<Signal> m_Buffer;
+	std::atomic<SignalBufferSnapshot> m_Snapshot;
 
+	std::atomic<bool> m_Saturate{ false };
 	std::atomic<float> m_StrengthAmp{ 1.0f };
 };

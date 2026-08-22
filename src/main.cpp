@@ -20,7 +20,7 @@ constexpr ImVec4 WAVEFORM_COLOR_R(0.96f, 0.69f, 0.26f, 0.9f);
 
 int main()
 {
-	constexpr InputMode g_InputMode = InputMode::SystemAudio;
+	constexpr InputMode g_InputMode = InputMode::VirtualController;
 
 	// ==================== Signal Buffer ====================
 	SignalBuffer signalBuffer;
@@ -315,6 +315,12 @@ int main()
 					signalBuffer.SetStrengthAmp(strength);
 
 					ImGui::Separator();
+					// ===== Saturation =====
+					bool saturate = signalBuffer.GetSaturation();
+					if (ImGui::Checkbox("Saturate", &saturate))
+					{
+						signalBuffer.SetSaturation(saturate);
+					}
 					// ===== Disconnect =====
 					if (ImGui::Button("Disconnect", ImVec2(-1.0f, 0.0f)))
 					{

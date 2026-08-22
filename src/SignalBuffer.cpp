@@ -13,11 +13,21 @@ void SignalBuffer::Push(float left, float right)
 {
     std::scoped_lock lock(m_Mutex);
 
-    m_Buffer.push_back(Signal{
-        .time = std::chrono::steady_clock::now(),
-        .left = left,
-        .right = right,
-        });
+	if (m_Saturate.load())
+	{
+        m_Buffer.push_back(Signal{
+            .time = std::chrono::steady_clock::now(),
+            .left = left > 0.0f ? 1.0f : 0.0f,
+            .right = right > 0.0f ? 1.0f : 0.0f,
+            });
+	}
+    else {
+        m_Buffer.push_back(Signal{
+            .time = std::chrono::steady_clock::now(),
+            .left = left,
+            .right = right,
+            });
+    }
 
     if (m_Buffer.size() >= BUFFER_MAX_SIZE)
     {
